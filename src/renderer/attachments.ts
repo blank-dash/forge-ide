@@ -33,8 +33,15 @@ export const LARGE_PASTE_CHARS = 2_000
 let counter = 0
 const nextId = (): string => `att-${Date.now()}-${counter++}`
 
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|bmp|svg|ico|heic|heif)$/i
+
+/**
+ * Dragging a file out of Explorer often arrives with an empty `type`, so a
+ * screenshot would land as a generic file chip instead of a thumbnail. The
+ * extension is the reliable signal on Windows.
+ */
 export function isImage(file: File): boolean {
-  return file.type.startsWith('image/')
+  return file.type.startsWith('image/') || IMAGE_EXTENSIONS.test(file.name)
 }
 
 /**
@@ -51,7 +58,7 @@ export async function toImageAttachment(file: File): Promise<Attachment> {
       kind: 'image',
       id: nextId(),
       name: file.name || 'image',
-      mediaType: file.type || 'image/png',
+      mediaType: file.type || mediaTypeFor(file.name),
       data,
       preview: URL.createObjectURL(file),
       bytes: file.size
@@ -78,11 +85,20 @@ export async function toImageAttachment(file: File): Promise<Attachment> {
     kind: 'image',
     id: nextId(),
     name: file.name || 'pasted image',
-    mediaType: source === file ? file.type || 'image/png' : 'image/png',
+    mediaType: source === file ? file.type || mediaTypeFor(file.name) : 'image/png',
     data: await toBase64(source),
     preview: URL.createObjectURL(source),
     bytes: source.size
   }
+}
+
+/** Providers reject an image block whose media type does not match the bytes. */
+function mediaTypeFor(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+  if (ext === 'gif') return 'image/gif'
+  if (ext === 'webp') return 'image/webp'
+  return 'image/png'
 }
 
 export function toFileAttachment(file: File, path: string): Attachment {

@@ -27,9 +27,9 @@
   --blue: #6a9fdc;
   --purple: #a98fd0;
 
-  --mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', 'Consolas', ui-monospace, monospace;
-  --sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  /* Both shipped with the app — see main.tsx. */
+  --mono: 'JetBrains Mono Variable', 'Cascadia Code', 'SF Mono', Consolas, ui-monospace, monospace;
+  --sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
   --chat-size: 13px;
   --editor-size: 13px;
@@ -217,7 +217,12 @@ body {
   color: var(--fg-0);
   font-family: var(--sans);
   font-size: 13px;
+  /* Grayscale antialiasing: subpixel rendering on a dark background is what
+     produces the coloured fringing that reads as a stair-step edge. */
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
 }
 
 button {
@@ -939,6 +944,159 @@ select {
   font-size: 11px;
   color: var(--fg-3);
   line-height: 1.5;
+}
+
+/* Popover menu */
+
+.menu {
+  position: absolute;
+  z-index: 70;
+  min-width: 220px;
+  padding: 5px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.5);
+  animation: select-in 120ms var(--ease);
+}
+
+.menu-top-left {
+  bottom: calc(100% + 6px);
+  left: 0;
+}
+.menu-top-right {
+  bottom: calc(100% + 6px);
+  right: 0;
+}
+.menu-bottom-left {
+  top: calc(100% + 6px);
+  left: 0;
+}
+.menu-bottom-right {
+  top: calc(100% + 6px);
+  right: 0;
+}
+
+.menu-row {
+  position: relative;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--fg-1);
+  text-align: left;
+}
+.menu-item:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.menu-item.danger:hover {
+  color: var(--red);
+}
+
+.menu-icon {
+  width: 16px;
+  flex: none;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.menu-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-shortcut {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+  flex: none;
+}
+
+.menu-arrow {
+  color: var(--fg-3);
+  font-size: 14px;
+  flex: none;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--border);
+}
+
+.menu-header {
+  padding: 7px 10px 5px;
+  font-size: 11px;
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-sub {
+  bottom: auto;
+  top: -5px;
+  left: calc(100% + 4px);
+  right: auto;
+}
+.menu-sub.flip {
+  left: auto;
+  right: calc(100% + 4px);
+}
+
+.menu-account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.menu-avatar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.menu-name {
+  font-size: 12.5px;
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-btn {
+  color: var(--fg-2);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+}
+.attach-btn:hover {
+  color: var(--accent);
+  background: var(--bg-3);
 }
 
 /* Themed dropdown — replaces <select>, whose list the OS draws and CSS cannot reach */
@@ -2507,4 +2665,32 @@ select {
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--fg-3);
+}
+
+/* Profile corner */
+
+.status-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-2);
+  padding: 0 2px;
+  max-width: 180px;
+}
+.status-profile:hover {
+  color: var(--fg-0);
+}
+
+.status-avatar {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--sans);
 }

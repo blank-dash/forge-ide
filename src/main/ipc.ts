@@ -297,6 +297,19 @@ function registerHandlers(
 
   handle('workspace:open', (target: string) => adoptWorkspace(target))
 
+  handle('fs:pick', async (kind: 'files' | 'folder') => {
+    const window = getWindow()
+    if (!window) throw new Error('No window.')
+
+    const result = await dialog.showOpenDialog(window, {
+      title: kind === 'folder' ? 'Attach a folder' : 'Attach files',
+      defaultPath: workspace.cwd,
+      properties:
+        kind === 'folder' ? ['openDirectory'] : ['openFile', 'multiSelections']
+    })
+    return result.canceled ? [] : result.filePaths
+  })
+
   handle('fs:list', (relative: string) => workspace.list(relative || '.'))
   handle('fs:read', (relative: string) => workspace.readFile(relative))
   handle('fs:write', async (relative: string, content: string) => {

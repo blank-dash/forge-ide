@@ -461,7 +461,10 @@ export class AgentSession {
     const ctx: ToolContext = {
       cwd: this.deps.cwd(),
       readOnly: settings.readOnly,
-      editApproval: settings.editApproval,
+      // Bypass means nothing is put in front of the user — including the review
+      // screen. Staging changes for approval while claiming to bypass approval
+      // is just the same question asked somewhere else.
+      editApproval: settings.bypassPermissions ? 'auto' : settings.editApproval,
       externalRoots: settings.externalRoots,
       sessionGrants: [...this.grants],
       signal,

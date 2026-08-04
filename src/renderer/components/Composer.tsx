@@ -16,6 +16,7 @@ import { useStore } from '../store'
 import AttachmentStrip from './AttachmentStrip'
 import ContextMeter from './ContextMeter'
 import EffortPicker from './EffortPicker'
+import Menu from './Menu'
 import ModelPicker from './ModelPicker'
 import Select from './Select'
 
@@ -44,6 +45,28 @@ export default function Composer() {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
   const [effortOpen, setEffortOpen] = useState(false)
+  const [attachOpen, setAttachOpen] = useState(false)
+
+  /**
+   * The native picker returns paths, not File objects, so these attach by path
+   * the way a dropped non-image file does — the agent reads them with its own
+   * tools rather than us inlining the bytes.
+   */
+  const attachFromDisk = useCallback(async (kind: 'files' | 'folder') => {
+    const paths = await window.forge.workspace.pickPaths(kind).catch(() => [] as string[])
+    if (paths.length === 0) return
+
+    setAttachments((current) => [
+      ...current,
+      ...paths.map((path) => ({
+        kind: 'file' as const,
+        id: `pick-${path}`,
+        name: path.split(/[\\/]/).pop() ?? path,
+        path,
+        bytes: 0
+      }))
+    ])
+  }, [])
 
   const reasoning = supportsThinking(settings)
   const visionOk = supportsVision(settings)
@@ -445,6 +468,54 @@ export default function Composer() {
       </div>
 
       <div className="composer-row">
+        <div style={{ position: 'relative' }}>
+          <button
+            className="attach-btn"
+            onClick={() => setAttachOpen((open) => !open)}
+            title={t('Attach files, folders and more')}
+          >
+            +
+          </button>
+          {attachOpen && (
+            <Menu
+              align="top-left"
+              onClose={() => setAttachOpen(false)}
+              items={[
+                {
+                  icon: '📎',
+                  label: t('Add files or photos'),
+                  shortcut: 'Ctrl+U',
+                  onSelect: () => void attachFromDisk('files')
+                },
+                {
+                  icon: '🗀',
+                  label: t('Add folder'),
+                  onSelect: () => void attachFromDisk('folder')
+                },
+                { kind: 'separator' },
+                {
+                  icon: '/',
+                  label: t('Slash commands'),
+                  onSelect: () => {
+                    setValue('/')
+                    textarea.current?.focus()
+                  }
+                },
+                {
+                  icon: '🔌',
+                  label: t('MCP servers'),
+                  onSelect: () => patchUi({ settingsOpen: true, settingsSection: 'mcp' })
+                },
+                {
+                  icon: '🧩',
+                  label: t('Skills'),
+                  onSelect: () => patchUi({ settingsOpen: true, settingsSection: 'skills' })
+                }
+              ]}
+            />
+          )}
+        </div>
+
         <div style={{ position: 'relative' }}>
           <button className="pill accent" onClick={() => setPickerOpen((open) => !open)}>
             {describeModel(settings)} ▴

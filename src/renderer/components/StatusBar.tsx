@@ -1,4 +1,5 @@
 import { useStore } from '../store'
+import ProfileMenu from './ProfileMenu'
 
 export default function StatusBar() {
   const bootstrap = useStore((state) => state.bootstrap)
@@ -108,6 +109,8 @@ export default function StatusBar() {
       >
         v{bootstrap?.appVersion ?? '—'}
       </button>
+
+      <ProfileMenu />
     </div>
   )
 }

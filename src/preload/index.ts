@@ -125,6 +125,8 @@ const api = {
   workspace: {
     pick: () => call<{ cwd: string; name: string } | null>('workspace:pick'),
     open: (target: string) => call<{ cwd: string; name: string }>('workspace:open', target),
+    /** Native picker for attachments; absolute paths, empty if cancelled. */
+    pickPaths: (kind: 'files' | 'folder') => call<string[]>('fs:pick', kind),
     list: (relative: string) => call<FileEntry[]>('fs:list', relative),
     read: (relative: string) => call<string>('fs:read', relative),
     write: (relative: string, content: string) => call<boolean>('fs:write', relative, content)

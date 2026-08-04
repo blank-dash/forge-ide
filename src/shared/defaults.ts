@@ -126,14 +126,13 @@ export const DEFAULT_SETTINGS: Settings = {
   mcpServers: [],
   disabledSkills: [],
   language: 'en',
+  displayName: '',
   theme: 'warm-dark',
   accent: '#d97757',
   editorFontSize: 13,
   chatFontSize: 13,
-  // Rounded, low-contrast monospace faces first — they read softer over long
-  // sessions than the sharp grotesques most editors default to.
-  fontFamily:
-    "'Maple Mono', 'Comic Mono', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', Consolas, monospace",
+  // Ships with the app, so this never falls through to whatever the system has.
+  fontFamily: "'JetBrains Mono Variable', 'Cascadia Code', 'SF Mono', Consolas, monospace",
   maxOutputTokens: 16_000,
   temperature: 0,
   effort: 'off',

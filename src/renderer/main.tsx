@@ -8,6 +8,11 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import App from './App'
+// Fonts are bundled rather than named in a CSS stack. Relying on the system
+// meant falling through to whatever it had — which is what produced the
+// stair-stepped text — and these carry Cyrillic, which most coding fonts skip.
+import '@fontsource-variable/inter'
+import '@fontsource-variable/jetbrains-mono'
 import './styles.css'
 import '@xterm/xterm/css/xterm.css'
 

@@ -429,6 +429,8 @@ export interface Settings {
   disabledSkills: string[]
   /** Interface language. Model replies follow whatever the user writes in. */
   language: 'en' | 'ru'
+  /** Shown in the profile menu; local only, nothing is sent anywhere. */
+  displayName: string
   theme: ThemeName
   accent: string
   editorFontSize: number
