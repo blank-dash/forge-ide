@@ -25,6 +25,8 @@ export default function Composer() {
   const totals = useStore((state) => state.totals)
   const changeCount = useStore((state) => state.changes.length)
 
+  const reasoning = supportsThinking(settings)
+
   const submit = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return
@@ -295,15 +297,21 @@ export default function Composer() {
           {pickerOpen && <ModelPicker onClose={() => setPickerOpen(false)} />}
         </div>
 
-        {supportsThinking(settings) && (
-          <button
-            className={`pill ${settings.effort === 'off' ? '' : 'accent'}`}
-            onClick={() => void saveSettings({ effort: nextEffort(settings.effort) })}
-            title="How hard the model thinks before answering. Click to cycle."
-          >
-            effort: {settings.effort}
-          </button>
-        )}
+        <button
+          className={`pill ${settings.effort !== 'off' && reasoning ? 'accent' : ''}`}
+          onClick={() => {
+            if (reasoning) void saveSettings({ effort: nextEffort(settings.effort) })
+            else patchUi({ settingsOpen: true, settingsSection: 'providers' })
+          }}
+          style={reasoning ? undefined : { opacity: 0.55 }}
+          title={
+            reasoning
+              ? 'How hard the model thinks before answering. Click to cycle: off → low → medium → high → max.'
+              : `${describeModel(settings)} is not marked as a reasoning model, so effort does nothing. Tick "thinking" for it in Settings → Providers.`
+          }
+        >
+          effort: {settings.effort}
+        </button>
 
         {settings.mode === 'agent' && (
           <>
