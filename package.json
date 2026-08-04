@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "Agentic IDE with a Claude Code style interface and bring-your-own-model support",
   "main": "./out/main/index.js",
-  "author": "forge",
+  "author": {
+    "name": "blank-dash",
+    "email": "blank-dash@users.noreply.github.com"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
@@ -59,7 +62,8 @@
       {
         "provider": "github",
         "owner": "blank-dash",
-        "repo": "forge-ide"
+        "repo": "forge-ide",
+        "releaseType": "release"
       }
     ],
     "win": {
