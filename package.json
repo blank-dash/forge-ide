@@ -1,6 +1,6 @@
 {
   "name": "forge-ide",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Agentic IDE with a Claude Code style interface and bring-your-own-model support",
   "main": "./out/main/index.js",
   "author": {
