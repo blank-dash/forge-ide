@@ -1,0 +1,44 @@
+name: Release
+
+# Tagging `v1.2.3` builds installers on all three platforms and publishes them
+# to a GitHub release. That release is also the feed electron-updater reads, so
+# publishing here is what makes in-app auto-update work.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Smoke tests
+        run: npm run smoke
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Unsigned builds: signing needs certificates this repo does not have.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run release

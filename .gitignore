@@ -1,0 +1,14 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+.DS_Store
+*.tsbuildinfo
+.vite/
+
+# Generated from build/icon.svg by `npm run icons`, but committed so CI and
+# electron-builder do not need a rasterisation step.
+!build/icon.png
+!build/icon-*.png
+!resources/tray.png

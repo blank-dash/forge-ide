@@ -1,0 +1,34 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Forge mark, built in the DashConnect visual language:
+    deep teal-black rounded square, single monochrome glyph in a
+    white-to-grey gradient. The glyph is a shell prompt — the one symbol that
+    reads at 16px and says "this is where you talk to the machine".
+  -->
+  <rect width="512" height="512" rx="100" fill="#061A23"/>
+
+  <g stroke="url(#forgeGradient)" fill="url(#forgeGradient)">
+    <path
+      d="M142 148 L270 256 L142 364"
+      stroke-width="48"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    <rect x="284" y="346" width="110" height="42" rx="21" stroke="none"/>
+  </g>
+
+  <defs>
+    <linearGradient
+      id="forgeGradient"
+      x1="150"
+      y1="140"
+      x2="380"
+      y2="390"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D0D0D0"/>
+    </linearGradient>
+  </defs>
+</svg>

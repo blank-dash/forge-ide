@@ -1,0 +1,118 @@
+{
+  "name": "forge-ide",
+  "version": "0.1.0",
+  "description": "Agentic IDE with a Claude Code style interface and bring-your-own-model support",
+  "main": "./out/main/index.js",
+  "author": "forge",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/smoke.mjs --external:electron --alias:@shared=./src/shared --log-level=warning && node out/smoke.mjs",
+    "icons": "electron scripts/make-icons.cjs",
+    "package": "electron-vite build && electron-builder --dir",
+    "dist": "electron-vite build && electron-builder --publish never",
+    "release": "electron-vite build && electron-builder --publish always"
+  },
+  "dependencies": {
+    "@lydell/node-pty": "^1.2.0-beta.14",
+    "@monaco-editor/react": "^4.6.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron-updater": "^6.8.9",
+    "fast-glob": "^3.3.2",
+    "monaco-editor": "^0.52.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "dev.forge.ide",
+    "productName": "Forge",
+    "copyright": "Copyright © 2026 Forge",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/@lydell/node-pty*/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dutow20162007-create",
+        "repo": "forge-ide"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-${version}-${arch}-setup.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Forge",
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}
