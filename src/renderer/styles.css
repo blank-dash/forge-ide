@@ -40,6 +40,64 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* True black — for OLED panels, where #000 costs no light at all. */
+:root[data-theme='true-black'] {
+  --bg-0: #000000;
+  --bg-1: #000000;
+  --bg-2: #0d0d0d;
+  --bg-3: #1a1a1a;
+  --bg-inset: #000000;
+
+  --fg-0: #e8e8e8;
+  --fg-1: #a8a8a8;
+  --fg-2: #787878;
+  --fg-3: #545454;
+
+  --border: #1c1c1c;
+  --border-strong: #2b2b2b;
+}
+
+/* Deliberately louder separation for bright rooms and tired eyes. */
+:root[data-theme='high-contrast'] {
+  --bg-0: #000000;
+  --bg-1: #060606;
+  --bg-2: #141414;
+  --bg-3: #242424;
+  --bg-inset: #000000;
+
+  --fg-0: #ffffff;
+  --fg-1: #d8d8d8;
+  --fg-2: #a8a8a8;
+  --fg-3: #7c7c7c;
+
+  --border: #3a3a3a;
+  --border-strong: #585858;
+
+  --green: #6ee06e;
+  --red: #ff6b6b;
+  --yellow: #ffd166;
+  --blue: #7ab8ff;
+}
+
+/* Cool blue-black, closer to most editor defaults. */
+:root[data-theme='midnight'] {
+  --bg-0: #0d1117;
+  --bg-1: #11161d;
+  --bg-2: #1a212b;
+  --bg-3: #242c38;
+  --bg-inset: #090d13;
+
+  --fg-0: #e6edf3;
+  --fg-1: #adbac7;
+  --fg-2: #768390;
+  --fg-3: #545d68;
+
+  --border: #21262d;
+  --border-strong: #30363d;
+
+  --blue: #6cb6ff;
+}
+
 :root[data-theme='light'] {
   --bg-0: #f5f4f0;
   --bg-1: #faf9f6;
@@ -796,6 +854,59 @@ select {
   line-height: 1.5;
 }
 
+/* Skills */
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.skill-open {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+  padding: 2px 0;
+}
+.skill-open:hover .skill-name {
+  color: var(--accent);
+}
+
+.skill-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-0);
+  flex: none;
+}
+
+.skill-desc {
+  font-size: 11.5px;
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-body {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  max-height: 340px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--fg-1);
+}
+
 /* Context meter */
 
 .ctx-meter {
@@ -1546,8 +1657,17 @@ select {
   border: 1px solid var(--border-strong);
   flex: none;
 }
-.theme-swatch.dark {
+.theme-swatch.warm-dark {
   background: linear-gradient(135deg, #141413 45%, #232320 45%);
+}
+.theme-swatch.true-black {
+  background: linear-gradient(135deg, #000 45%, #1a1a1a 45%);
+}
+.theme-swatch.high-contrast {
+  background: linear-gradient(135deg, #000 45%, #fff 45%);
+}
+.theme-swatch.midnight {
+  background: linear-gradient(135deg, #0d1117 45%, #242c38 45%);
 }
 .theme-swatch.light {
   background: linear-gradient(135deg, #faf9f6 45%, #efeee9 45%);

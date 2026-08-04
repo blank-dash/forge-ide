@@ -15,6 +15,7 @@ import type {
   SessionRecord,
   SessionSummary,
   Settings,
+  Skill,
   TokenUsage
 } from '@shared/types'
 
@@ -187,6 +188,12 @@ const api = {
     kill: (id: string) => call<boolean>('terminal:kill', id),
     onData: (handler: (payload: { id: string; data: string }) => void) =>
       subscribe('terminal:data', handler)
+  },
+
+  skills: {
+    list: () => call<Skill[]>('skills:list'),
+    reload: () => call<Skill[]>('skills:reload'),
+    openFolder: (scope: 'global' | 'project') => call<string>('skills:open-folder', scope)
   },
 
   updates: {

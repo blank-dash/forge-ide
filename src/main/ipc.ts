@@ -10,7 +10,8 @@ import type {
   Settings
 } from '@shared/types'
 import { AgentSession } from './agent/session'
-import { shellInfo } from './agent/tools'
+import { SkillLibrary } from './agent/skills'
+import { activeTools, makeUseSkillTool, shellInfo } from './agent/tools'
 import { Git } from './git'
 import { McpManager } from './mcp/manager'
 import { getAdapter, testProvider } from './providers'
@@ -29,6 +30,7 @@ export interface Services {
   git: Git
   sessions: SessionStore
   updater: Updater
+  skills: SkillLibrary
   dispose(): void
 }
 
@@ -59,9 +61,17 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
     return value
   }
 
+  const skills = new SkillLibrary()
+  const useSkill = makeUseSkillTool(
+    (name) => skills.find(name, settings.get().disabledSkills),
+    () => skills.all(settings.get().disabledSkills)
+  ) as unknown as Parameters<typeof activeTools>[0][number]
+
   const session = new AgentSession({
     cwd: () => workspace.cwd,
     settings: () => settings.get(),
+    skillTool: () => (skills.all(settings.get().disabledSkills).length > 0 ? useSkill : null),
+    skillCatalogue: () => skills.catalogue(settings.get().disabledSkills),
     saveSettings: (next) => {
       settings.set(next)
       send('settings:changed', settings.get())
@@ -116,6 +126,7 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
     git,
     sessions,
     updater,
+    skills,
     dispose(): void {
       offChanges()
       offMcp()
@@ -140,7 +151,8 @@ function registerHandlers(
   send: (channel: string, payload: unknown) => void,
   invalidateGit: () => void
 ): void {
-  const { settings, workspace, terminals, session, mcp, git, sessions, updater } = services
+  const { settings, workspace, terminals, session, mcp, git, sessions, updater, skills } =
+    services
 
   const handle = <T>(channel: string, fn: (...args: never[]) => Promise<T> | T): void => {
     ipcMain.removeHandler(channel)
@@ -164,6 +176,7 @@ function registerHandlers(
 
     // Servers start in the background: a slow one must not delay the window.
     void mcp.sync(loaded.mcpServers)
+    await skills.load(workspace.cwd)
 
     return {
       settings: loaded,
@@ -266,6 +279,8 @@ function registerHandlers(
     })
     session.reset()
     invalidateGit()
+    // Project skills live in the workspace, so they change with it.
+    await skills.load(root)
     return { cwd: root, name: workspace.name }
   }
 
@@ -409,6 +424,19 @@ function registerHandlers(
   handle('sessions:remove', async (id: string) => {
     await sessions.remove(id)
     return true
+  })
+
+  /* ---------------- skills ---------------- */
+
+  handle('skills:list', () => skills.all([]))
+  handle('skills:reload', async () => {
+    await skills.load(workspace.cwd)
+    return skills.all([])
+  })
+  handle('skills:open-folder', async (scope: 'global' | 'project') => {
+    const dir = await skills.createDir(workspace.cwd, scope)
+    await shell.openPath(dir)
+    return dir
   })
 
   /* ---------------- updates ---------------- */

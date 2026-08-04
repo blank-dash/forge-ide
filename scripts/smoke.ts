@@ -489,8 +489,12 @@ test('dropping stops on a clean user turn so tool pairing survives', () => {
     'the first kept message must not be an orphaned tool result'
   )
   assert.ok(
-    head.content.some((block) => block.type === 'text' && block.text.includes('dropped')),
-    'the user should be told history was dropped'
+    head.content.some((block) => block.type === 'text' && block.text.includes('condensed')),
+    'the agent should be told earlier turns were condensed'
+  )
+  assert.ok(
+    head.content.some((block) => block.type === 'text' && /You asked|I ran/.test(block.text)),
+    'the summary should carry what actually happened, not just that something was lost'
   )
 
   // Every tool_result kept must still have its tool_use earlier in the list.

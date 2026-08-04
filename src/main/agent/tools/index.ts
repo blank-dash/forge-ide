@@ -24,11 +24,17 @@ export const BUILTIN_TOOLS = [
 ] as unknown as AnyTool[]
 
 /**
- * Built-ins plus whatever MCP contributes this turn. MCP tools come and go with
- * their servers, so the list is assembled per call rather than cached.
+ * Built-ins plus the skill loader plus whatever MCP contributes this turn.
+ * MCP tools come and go with their servers, so the list is assembled per call
+ * rather than cached.
  */
-export function activeTools(mcpTools: AnyTool[], readOnlyOnly: boolean): AnyTool[] {
-  return [...BUILTIN_TOOLS, ...mcpTools].filter((tool) => !readOnlyOnly || tool.readOnly)
+export function activeTools(
+  mcpTools: AnyTool[],
+  skillTool: AnyTool | null,
+  readOnlyOnly: boolean
+): AnyTool[] {
+  const all = [...BUILTIN_TOOLS, ...(skillTool ? [skillTool] : []), ...mcpTools]
+  return all.filter((tool) => !readOnlyOnly || tool.readOnly)
 }
 
 export function findTool(tools: AnyTool[], name: string): AnyTool | undefined {
@@ -53,3 +59,4 @@ export {
 } from './types'
 export { buildProjectSnapshot } from './search'
 export { shellInfo } from './shell'
+export { makeUseSkillTool } from './skills'

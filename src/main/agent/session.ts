@@ -42,6 +42,10 @@ export interface SessionDeps {
    */
   askUser(request: PermissionRequest, signal: AbortSignal): Promise<PermissionDecision>
   mcpTools(): ToolDef<Record<string, never>>[]
+  /** The `use_skill` tool, or null when the library is empty. */
+  skillTool(): ToolDef<Record<string, never>> | null
+  /** Names and descriptions only — bodies load through the tool. */
+  skillCatalogue(): string
   gitContext(): Promise<string>
   persist(record: SessionRecord): void
 }
@@ -144,13 +148,14 @@ export class AgentSession {
 
         const settings = this.deps.settings()
         const resolved = resolveModel(settings, settings.activeModel)
-        const tools = activeTools(this.deps.mcpTools(), settings.readOnly)
+        const tools = activeTools(this.deps.mcpTools(), this.deps.skillTool(), settings.readOnly)
 
         const system = await buildSystemPrompt({
           cwd: this.deps.cwd(),
           settings,
           gitContext: await this.deps.gitContext(),
-          mcpTools: tools.filter((tool) => tool.name.startsWith('mcp__')).map((tool) => tool.name)
+          mcpTools: tools.filter((tool) => tool.name.startsWith('mcp__')).map((tool) => tool.name),
+          skillCatalogue: this.deps.skillCatalogue()
         })
 
         const trimmed = trimForContext(

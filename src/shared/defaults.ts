@@ -119,15 +119,20 @@ export const DEFAULT_SETTINGS: Settings = {
   bypassPermissions: false,
   editApproval: 'review',
   commandApproval: 'ask',
+  stance: 'default',
   allowRules: [],
   denyRules: [],
   externalRoots: [],
   mcpServers: [],
-  theme: 'dark',
+  disabledSkills: [],
+  theme: 'warm-dark',
   accent: '#d97757',
   editorFontSize: 13,
   chatFontSize: 13,
-  fontFamily: "'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, monospace",
+  // Rounded, low-contrast monospace faces first — they read softer over long
+  // sessions than the sharp grotesques most editors default to.
+  fontFamily:
+    "'Maple Mono', 'Comic Mono', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', Consolas, monospace",
   maxOutputTokens: 16_000,
   temperature: 0,
   effort: 'off',

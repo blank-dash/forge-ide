@@ -85,23 +85,28 @@ export function trimForContext(
   }
 
   let dropped = 0
+  let summary = ''
   while (estimate > budget) {
     const cut = nextCleanBoundary(working, 1)
     // Nothing left to drop without breaking the last exchange.
     if (cut === -1 || cut >= working.length) break
 
+    // Keep what those turns were about before letting go of them. Losing the
+    // detail is unavoidable; losing the thread is not, and an agent that
+    // forgets what it was asked halfway through a long task is useless.
+    summary += summarise(working.slice(0, cut))
     dropped += cut
     working = working.slice(cut)
     estimate = estimateTokens(system, working)
   }
 
   if (dropped > 0) {
-    working = [prefixNotice(working[0], dropped), ...working.slice(1)]
+    working = [prefixSummary(working[0], dropped, summary), ...working.slice(1)]
     estimate = estimateTokens(system, working)
   }
 
   const parts: string[] = []
-  if (dropped > 0) parts.push(`dropped ${dropped} earlier message${dropped === 1 ? '' : 's'}`)
+  if (dropped > 0) parts.push(`summarised ${dropped} earlier message${dropped === 1 ? '' : 's'}`)
   if (compacted > 0) parts.push(`trimmed ${compacted} tool result${compacted === 1 ? '' : 's'}`)
 
   return {
@@ -109,6 +114,49 @@ export function trimForContext(
     notice: parts.length > 0 ? `Context was getting full — ${parts.join(' and ')}.` : null,
     estimatedTokens: estimate
   }
+}
+
+/**
+ * A cheap, deterministic digest of turns about to be dropped: what the user
+ * asked, what the assistant said it did, and which files it touched. No model
+ * call — this runs on every request and has to be free.
+ */
+function summarise(messages: Message[]): string {
+  const lines: string[] = []
+
+  for (const message of messages) {
+    for (const block of message.content) {
+      if (block.type === 'text' && block.text.trim()) {
+        const text = block.text.replace(/\s+/g, ' ').trim()
+        lines.push(`${message.role === 'user' ? 'You asked' : 'I said'}: ${clip(text, 220)}`)
+      } else if (block.type === 'tool_use') {
+        const target = describeTarget(block.input)
+        lines.push(`I ran ${block.name}${target ? `(${target})` : ''}`)
+      }
+    }
+  }
+
+  // Collapse runs of identical tool lines — a loop of twenty reads is one fact.
+  const collapsed: string[] = []
+  for (const line of lines) {
+    const last = collapsed[collapsed.length - 1]
+    if (last && last.startsWith(line.split('(')[0]) && line.startsWith('I ran')) continue
+    collapsed.push(line)
+  }
+
+  return `${collapsed.join('\n')}\n`
+}
+
+function describeTarget(input: Record<string, unknown>): string {
+  for (const key of ['path', 'pattern', 'command', 'name']) {
+    const value = input?.[key]
+    if (typeof value === 'string' && value) return clip(value.split('\n')[0], 60)
+  }
+  return ''
+}
+
+function clip(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 /**
@@ -126,10 +174,12 @@ function nextCleanBoundary(messages: Message[], from: number): number {
   return -1
 }
 
-function prefixNotice(message: Message, dropped: number): Message {
+function prefixSummary(message: Message, dropped: number, summary: string): Message {
   const note =
-    `[${dropped} earlier message${dropped === 1 ? '' : 's'} were dropped to fit the context ` +
-    'window. Ask the user if you need details from earlier in the conversation.]\n\n'
+    `[Earlier in this conversation — ${dropped} message${dropped === 1 ? '' : 's'} condensed to ` +
+    `fit the context window. The detail is gone; this is what happened:\n` +
+    `${clip(summary.trim(), 4_000)}\n` +
+    'Re-read any file you need to be certain about rather than trusting this summary.]\n\n'
 
   const first = message.content.find((block) => block.type === 'text')
   if (first) {

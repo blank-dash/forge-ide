@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react'
-import type { ProviderConfig, ProviderTestResult } from '@shared/types'
+import type { ProviderConfig, ProviderTestResult, Settings } from '@shared/types'
 import { useStore } from '../store'
 
 type Step = 'welcome' | 'model' | 'folder' | 'done'
+
+const THEMES: Array<{ id: Settings['theme']; label: string }> = [
+  { id: 'warm-dark', label: 'Warm dark' },
+  { id: 'true-black', label: 'True black' },
+  { id: 'high-contrast', label: 'High contrast' },
+  { id: 'midnight', label: 'Midnight' },
+  { id: 'light', label: 'Light' }
+]
 
 /**
  * First run. Three decisions, in the order they actually block you: how it
@@ -76,15 +84,15 @@ export default function SetupWizard() {
               </p>
 
               <h4>Theme</h4>
-              <div className="row" style={{ marginBottom: 18 }}>
-                {(['dark', 'light'] as const).map((theme) => (
+              <div className="row" style={{ marginBottom: 18, flexWrap: 'wrap' }}>
+                {THEMES.map((option) => (
                   <button
-                    key={theme}
-                    className={`theme-card ${settings.theme === theme ? 'active' : ''}`}
-                    onClick={() => void saveSettings({ theme })}
+                    key={option.id}
+                    className={`theme-card ${settings.theme === option.id ? 'active' : ''}`}
+                    onClick={() => void saveSettings({ theme: option.id })}
                   >
-                    <span className={`theme-swatch ${theme}`} />
-                    {theme === 'dark' ? 'Dark' : 'Light'}
+                    <span className={`theme-swatch ${option.id}`} />
+                    {option.label}
                   </button>
                 ))}
               </div>

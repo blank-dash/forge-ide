@@ -160,6 +160,14 @@ export type EditApproval = 'review' | 'ask' | 'auto'
 
 export type CommandApproval = 'ask' | 'auto'
 
+export type ThemeName = 'warm-dark' | 'true-black' | 'high-contrast' | 'midnight' | 'light'
+
+/**
+ * How the agent should approach the work. Each becomes a block of instruction
+ * in the system prompt — the same tools, a different working style.
+ */
+export type AgentStance = 'default' | 'plan' | 'careful' | 'fast' | 'explain' | 'review'
+
 /**
  * How hard the model should think before answering. One control across every
  * provider — it becomes a thinking-token budget on Anthropic and Gemini, and
@@ -223,6 +231,21 @@ export interface PendingChange {
   added: number
   removed: number
   updatedAt: number
+}
+
+/* ------------------------------------------------------------------ */
+/* Skills                                                              */
+/* ------------------------------------------------------------------ */
+
+export interface Skill {
+  /** Stable identifier the model passes to `use_skill`. */
+  id: string
+  /** One line, shown in the catalogue — this is what the model chooses on. */
+  description: string
+  category: string
+  /** The full instructions, loaded only when the skill is actually used. */
+  body: string
+  source: 'builtin' | 'global' | 'project'
 }
 
 /* ------------------------------------------------------------------ */
@@ -341,13 +364,17 @@ export interface Settings {
   bypassPermissions: boolean
   editApproval: EditApproval
   commandApproval: CommandApproval
+  /** The working style injected into the system prompt. */
+  stance: AgentStance
   /** Persisted "always allow" rules, e.g. "Bash(git status *)". */
   allowRules: string[]
   denyRules: string[]
   /** Directories outside the workspace the user has approved access to. */
   externalRoots: string[]
   mcpServers: McpServerConfig[]
-  theme: 'dark' | 'light'
+  /** Ids of skills hidden from the model. */
+  disabledSkills: string[]
+  theme: ThemeName
   accent: string
   editorFontSize: number
   chatFontSize: number

@@ -3,9 +3,11 @@ import type { EditApproval, ProviderConfig, Settings } from '@shared/types'
 import { useStore } from '../store'
 import McpSettings from './McpSettings'
 import ProviderEditor from './ProviderEditor'
+import SkillSettings from './SkillSettings'
 
 const SECTIONS = [
   { id: 'providers', label: 'Providers & models' },
+  { id: 'skills', label: 'Skills' },
   { id: 'mcp', label: 'MCP servers' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'behaviour', label: 'Agent behaviour' },
@@ -138,6 +140,13 @@ export default function SettingsModal() {
               </>
             )}
 
+            {section === 'skills' && (
+              <SkillSettings
+                disabled={draft.disabledSkills}
+                onChange={(disabledSkills) => patch({ disabledSkills })}
+              />
+            )}
+
             {section === 'mcp' && (
               <McpSettings
                 servers={draft.mcpServers}
@@ -248,6 +257,26 @@ export default function SettingsModal() {
                 <h3>Agent behaviour</h3>
                 <p>Defaults for every model. Individual models can override them.</p>
 
+                <div className="field">
+                  <label>Working style</label>
+                  <select
+                    className="select"
+                    value={draft.stance}
+                    onChange={(event) => patch({ stance: event.target.value as Settings['stance'] })}
+                  >
+                    <option value="default">Default — get the job done</option>
+                    <option value="plan">Plan first — investigate, propose, wait</option>
+                    <option value="careful">Careful — small steps, verify each</option>
+                    <option value="fast">Fast — fewest steps to a working result</option>
+                    <option value="explain">Explain — narrate the reasoning</option>
+                    <option value="review">Review — report findings, change nothing</option>
+                  </select>
+                  <div className="hint">
+                    Same tools either way; this changes how the agent approaches the work. Plan
+                    and Review will not edit even when edits are allowed.
+                  </div>
+                </div>
+
                 <div className="row">
                   <div className="field">
                     <label>Max output tokens per turn</label>
@@ -343,7 +372,10 @@ export default function SettingsModal() {
                       value={draft.theme}
                       onChange={(event) => patch({ theme: event.target.value as Settings['theme'] })}
                     >
-                      <option value="dark">Dark</option>
+                      <option value="warm-dark">Warm dark</option>
+                      <option value="true-black">True black — OLED</option>
+                      <option value="high-contrast">High contrast</option>
+                      <option value="midnight">Midnight blue</option>
                       <option value="light">Light</option>
                     </select>
                   </div>

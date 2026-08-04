@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { EditApproval, Settings } from '@shared/types'
+import type { AgentStance, EditApproval, Settings } from '@shared/types'
 import { buildProjectSnapshot, shellInfo } from './tools'
 
 /** Project-level instruction files we pick up automatically, in priority order. */
@@ -13,6 +13,34 @@ export interface PromptContext {
   gitContext: string
   /** Names of MCP tools available this turn. */
   mcpTools: string[]
+  /** Skill names and descriptions; bodies load through the use_skill tool. */
+  skillCatalogue: string
+}
+
+/** Working styles. The tools are the same; the approach is not. */
+const STANCES: Record<AgentStance, string> = {
+  default: '',
+  plan: `## Plan first
+Do not change anything yet. Investigate, then produce a plan concrete enough to hand to
+someone else: the files you would touch, what changes in each, and the order — sequenced so
+the project still works after every step. Call out what could break and what needs the
+user's decision. End by asking whether to proceed.`,
+  careful: `## Work carefully
+Move in small, verifiable steps. Read before you write, and re-read after. After each
+change, run whatever check covers it and say what it said. Prefer the boring solution.
+If two approaches are defensible, say so and ask rather than picking silently.`,
+  fast: `## Move fast
+Get to a working result with the fewest steps. Skip the exploration you do not need, batch
+your reads, and do not narrate. Still run the build or tests before claiming success — fast
+does not mean unverified.`,
+  explain: `## Explain as you go
+The user is learning this codebase. Before each change, say what you are about to do and
+why in one or two sentences. Name the pattern or the constraint that drives the choice.
+Point out anything surprising about how this project works.`,
+  review: `## Review, do not change
+Read the code and report. Rank findings by consequence, and give a concrete failing case
+for each — the input and what goes wrong. A finding you cannot demonstrate is a guess; say
+so or drop it. Do not edit anything unless asked.`
 }
 
 export async function buildSystemPrompt(ctx: PromptContext): Promise<string> {
@@ -70,6 +98,18 @@ ${snapshot}
 
   if (ctx.gitContext) {
     sections.push(`## Git\n\`\`\`\n${ctx.gitContext}\n\`\`\``)
+  }
+
+  if (STANCES[settings.stance]) sections.push(STANCES[settings.stance])
+
+  if (ctx.skillCatalogue) {
+    sections.push(
+      `## Skills
+Reusable instruction packs. Only the summaries are here; call \`use_skill\` with an id to get
+the full guidance, and do that before starting a task one of them covers.
+
+${ctx.skillCatalogue}`
+    )
   }
 
   if (ctx.mcpTools.length > 0) {

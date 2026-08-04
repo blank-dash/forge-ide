@@ -150,6 +150,8 @@ function decryptKey(value: string): string {
 interface LegacySettings {
   permissionMode?: 'plan' | 'default' | 'acceptEdits' | 'bypass'
   thinkingBudget?: number
+  /** Themes were a two-value toggle before the presets existed. */
+  theme?: string
 }
 
 function migrateModes(input: Partial<Settings> & LegacySettings): Partial<Settings> {
@@ -171,8 +173,9 @@ function migrateModes(input: Partial<Settings> & LegacySettings): Partial<Settin
  * Fills in fields added by newer versions and re-merges built-in providers so
  * upgrades pick up new presets without clobbering user edits.
  */
-function migrate(raw: Partial<Settings> & LegacySettings): Settings {
-  const input = migrateModes(raw)
+function migrate(rawInput: Partial<Settings> & LegacySettings): Settings {
+  const raw = rawInput
+  const input = migrateModes(raw as Partial<Settings> & LegacySettings)
 
   // A raw thinking budget became the "effort" preset.
   if (raw.thinkingBudget !== undefined && input.effort === undefined) {
@@ -214,9 +217,15 @@ function migrate(raw: Partial<Settings> & LegacySettings): Settings {
     })
   }
 
+  // 'dark' was the only dark option before the presets landed.
+  const theme: Settings['theme'] =
+    (raw.theme as string) === 'dark' ? 'warm-dark' : (input.theme ?? DEFAULT_SETTINGS.theme)
+
   return {
     ...DEFAULT_SETTINGS,
     ...input,
+    theme,
+    disabledSkills: input.disabledSkills ?? [],
     providers,
     allowRules: input.allowRules ?? [],
     denyRules: input.denyRules ?? [],
