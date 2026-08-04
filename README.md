@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 <img src="build/icon-256.png" width="112" alt="Forge">
 
@@ -16,7 +16,7 @@ working beside you.
 ## Install
 
 Grab the installer for your platform from
-[Releases](https://github.com/dutow20162007-create/forge-ide/releases). Forge
+[Releases](https://github.com/blank-dash/forge-ide/releases). Forge
 checks for updates on its own and tells you when one is ready — it never
 downloads or restarts without you asking.
 

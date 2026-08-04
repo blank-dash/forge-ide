@@ -1,6 +1,6 @@
 import { app, Menu, shell, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 
-const REPO_URL = 'https://github.com/dutow20162007-create/forge-ide'
+const REPO_URL = 'https://github.com/blank-dash/forge-ide'
 
 /**
  * A real application menu. The window chrome is custom and the bar is hidden,
