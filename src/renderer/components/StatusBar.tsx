@@ -64,9 +64,19 @@ export default function StatusBar() {
 
       <button
         onClick={() => patchUi({ settingsOpen: true, settingsSection: 'permissions' })}
-        style={settings.readOnly ? { color: 'var(--yellow)' } : undefined}
+        style={
+          settings.readOnly
+            ? { color: 'var(--yellow)' }
+            : settings.bypassPermissions
+              ? { color: 'var(--red)' }
+              : undefined
+        }
       >
-        {settings.readOnly ? 'read-only' : `edits: ${settings.editApproval}`}
+        {settings.readOnly
+          ? 'read-only'
+          : settings.bypassPermissions
+            ? 'bypassing permissions'
+            : `edits: ${settings.editApproval}`}
       </button>
 
       <button onClick={() => patchUi({ settingsOpen: true, settingsSection: 'providers' })}>

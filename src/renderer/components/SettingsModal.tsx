@@ -162,9 +162,27 @@ export default function SettingsModal() {
                   />
                   Read-only — mutating tools are not offered to the model at all
                 </label>
-                <div className="hint" style={{ marginBottom: 16 }}>
+                <div className="hint" style={{ marginBottom: 12 }}>
                   A hard boundary: no allow rule can unlock it. Reading a file outside the
                   workspace still prompts, because that stays your call.
+                </div>
+
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={draft.bypassPermissions}
+                    disabled={draft.readOnly}
+                    onChange={(event) => patch({ bypassPermissions: event.target.checked })}
+                  />
+                  Bypass permissions — never ask about anything
+                </label>
+                <div
+                  className={draft.bypassPermissions ? 'warn-note' : 'hint'}
+                  style={{ marginBottom: 16, marginTop: draft.bypassPermissions ? 8 : 4 }}
+                >
+                  {draft.bypassPermissions
+                    ? 'Every edit, shell command, MCP tool call and access to files outside this project runs immediately, with no dialog. Deny rules and read-only still apply; nothing else does.'
+                    : 'Approves everything without a prompt — edits, commands, MCP tools and paths outside the workspace. Deny rules and read-only still win over it.'}
                 </div>
 
                 <div className="row">

@@ -169,12 +169,22 @@ export default function Composer() {
       {
         name: '/readonly',
         description: 'Let the agent look but not touch',
-        run: () => void saveSettings({ readOnly: true })
+        run: () => void saveSettings({ readOnly: true, bypassPermissions: false })
       },
       {
         name: '/unlock',
         description: 'Allow the agent to edit and run commands again',
         run: () => void saveSettings({ readOnly: false })
+      },
+      {
+        name: '/bypass',
+        description: 'Approve everything without asking — careful',
+        run: () => void saveSettings({ bypassPermissions: true, readOnly: false })
+      },
+      {
+        name: '/ask-again',
+        description: 'Stop bypassing and go back to prompting',
+        run: () => void saveSettings({ bypassPermissions: false })
       },
       {
         name: '/review',
@@ -314,9 +324,9 @@ export default function Composer() {
       await command.run()
       return
     }
-    if (running) return
+    // Sending while the agent works is allowed — it queues.
     await submit(value, attachments)
-  }, [slashMatches, menuIndex, running, submit, value, attachments])
+  }, [slashMatches, menuIndex, submit, value, attachments])
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (menuOpen) {
@@ -421,10 +431,8 @@ export default function Composer() {
             dragging
               ? 'Drop files here'
               : running
-                ? 'Working… Esc to interrupt'
-                : settings.mode === 'chat'
-                  ? 'Ask about the code — / commands, @ files, paste images'
-                  : 'Describe the change — / commands, @ files, paste images'
+                ? 'Add to what it is doing — sent at the next step. Esc to interrupt.'
+                : 'Ask, or describe a change — / commands, @ files, paste images'
           }
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={onKeyDown}
@@ -478,7 +486,17 @@ export default function Composer() {
           {settings.readOnly ? 'read-only' : 'can edit'}
         </button>
 
-        {!settings.readOnly && (
+        {!settings.readOnly && settings.bypassPermissions && (
+          <button
+            className="pill danger"
+            onClick={() => void saveSettings({ bypassPermissions: false })}
+            title="Everything runs without asking. Click to start asking again."
+          >
+            bypassing permissions
+          </button>
+        )}
+
+        {!settings.readOnly && !settings.bypassPermissions && (
           <>
             <select
               className="mini-select"

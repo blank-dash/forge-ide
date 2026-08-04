@@ -45,7 +45,9 @@ export async function buildSystemPrompt(ctx: PromptContext): Promise<string> {
 ${
   settings.readOnly
     ? '- Read-only is on: you may look but not change anything.'
-    : `- Edit approval: ${describeEditApproval(settings.editApproval)}`
+    : settings.bypassPermissions
+      ? '- Permissions are bypassed: nothing you do will be checked with the user first. Be correspondingly careful.'
+      : `- Edit approval: ${describeEditApproval(settings.editApproval)}`
 }`,
 
     `## Files outside the workspace

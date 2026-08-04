@@ -307,6 +307,8 @@ export type AgentEvent =
   /** A turn announced but never delivered — a retried request. Drop it. */
   | { type: 'turn_abandoned'; messageId: string }
   | { type: 'idle' }
+  /** A message was typed mid-turn and is waiting for the next boundary. */
+  | { type: 'queued'; text: string; pending: number }
   | {
       type: 'context'
       /** Tokens the next request would carry. */
@@ -332,6 +334,11 @@ export interface Settings {
   mode: InteractionMode
   /** Hard read-only: mutating tools are not offered to the model at all. */
   readOnly: boolean
+  /**
+   * Approve everything without asking — edits, commands, MCP tools and paths
+   * outside the workspace. Deny rules and read-only still win over it.
+   */
+  bypassPermissions: boolean
   editApproval: EditApproval
   commandApproval: CommandApproval
   /** Persisted "always allow" rules, e.g. "Bash(git status *)". */

@@ -94,6 +94,7 @@ const perm = (
 ): ReturnType<typeof evaluatePermission> =>
   evaluatePermission({
     readOnly: false,
+    bypassPermissions: false,
     editApproval: 'ask',
     commandApproval: 'ask',
     allowRules: [],
@@ -166,6 +167,39 @@ test('read-only refuses edits even with an allow rule', () => {
 test('read-only refuses shell commands even on auto', () => {
   assert.equal(
     perm({ readOnly: true, commandApproval: 'auto', request: req('shell', 'run_command', 'ls') }),
+    'deny'
+  )
+})
+
+test('bypass approves everything, including paths outside the workspace', () => {
+  for (const request of [
+    req('edit', 'edit_file', 'src/app.ts'),
+    req('shell', 'run_command', 'rm -rf build'),
+    req('mcp', 'mcp__db__query', 'select 1'),
+    req('external', 'external_path', 'C:/elsewhere/file.txt')
+  ]) {
+    assert.equal(perm({ bypassPermissions: true, request }), 'allow', request.toolName)
+  }
+})
+
+test('a deny rule still beats bypass', () => {
+  assert.equal(
+    perm({
+      bypassPermissions: true,
+      denyRules: ['Bash(rm *)'],
+      request: req('shell', 'run_command', 'rm -rf build')
+    }),
+    'deny'
+  )
+})
+
+test('read-only still beats bypass', () => {
+  assert.equal(
+    perm({
+      readOnly: true,
+      bypassPermissions: true,
+      request: req('edit', 'edit_file', 'src/app.ts')
+    }),
     'deny'
   )
 })

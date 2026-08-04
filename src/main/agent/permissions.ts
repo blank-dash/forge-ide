@@ -16,6 +16,7 @@ export type Verdict = 'allow' | 'deny' | 'ask'
 
 export interface PermissionInput {
   readOnly: boolean
+  bypassPermissions: boolean
   editApproval: EditApproval
   commandApproval: CommandApproval
   allowRules: string[]
@@ -34,6 +35,10 @@ export function evaluatePermission(input: PermissionInput): Verdict {
   // Read-only is a hard boundary; no allow rule can unlock a mutation. Reading
   // a file outside the workspace is still the user's call to make, though.
   if (input.readOnly && request.kind !== 'external') return 'deny'
+
+  // Bypass is deliberately last of the absolutes: deny rules and read-only
+  // still win, so a boundary someone set on purpose is not undone by it.
+  if (input.bypassPermissions) return 'allow'
 
   switch (request.kind) {
     case 'external':

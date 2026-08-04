@@ -77,6 +77,8 @@ interface State {
   permission: PermissionRequest | null
   /** Id of the conversation currently loaded in the main process. */
   sessionId: string | null
+  /** Messages typed mid-turn that the agent has not picked up yet. */
+  queuedCount: number
   /** How full the model's context window is for the next request. */
   context: { used: number; window: number; estimated: boolean } | null
 
@@ -143,6 +145,7 @@ export const useStore = create<State>((set, get) => ({
   totals: EMPTY_USAGE,
   permission: null,
   sessionId: null,
+  queuedCount: 0,
   context: null,
 
   changes: [],
@@ -277,6 +280,10 @@ export const useStore = create<State>((set, get) => ({
         }))
         break
 
+      case 'queued':
+        set({ queuedCount: event.pending })
+        break
+
       case 'turn_abandoned':
         set((state) => ({
           entries: state.entries.filter((entry) => entry.id !== event.messageId)
@@ -287,6 +294,7 @@ export const useStore = create<State>((set, get) => ({
         set((state) => ({
           running: false,
           permission: null,
+          queuedCount: 0,
           // A turn that produced nothing leaves an empty bubble behind.
           entries: state.entries
             .filter((entry) => entry.role === 'user' || entry.blocks.length > 0)

@@ -15,6 +15,28 @@ const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 const FIRST_CHECK_DELAY_MS = 20_000
 
 /**
+ * electron-updater surfaces raw HTTP errors with stack traces and local file
+ * paths. None of that helps someone who clicked "check for updates", and the
+ * most common failure is entirely benign — a release still being uploaded.
+ */
+function explain(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (/Cannot find .*\.yml|404/.test(message)) {
+    return 'The newest release is still being built. Try again in a few minutes.'
+  }
+  if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|network/i.test(message)) {
+    return 'Could not reach GitHub. Check your connection and try again.'
+  }
+  if (/ERR_UPDATER_CHANNEL_FILE_NOT_FOUND/.test(message)) {
+    return 'No update feed was published for this platform yet.'
+  }
+
+  // Keep the first line only; the rest is a stack trace.
+  return message.split('\n')[0]
+}
+
+/**
  * Update checks against the GitHub releases feed electron-builder publishes.
  *
  * Downloads are never automatic: an IDE that swaps itself out from under an
@@ -66,7 +88,7 @@ export class Updater {
       if (!result?.updateInfo) return this.set({ state: 'none' })
       return this.status
     } catch (error) {
-      return this.set({ state: 'error', message: (error as Error).message })
+      return this.set({ state: 'error', message: explain(error) })
     }
   }
 
@@ -110,9 +132,7 @@ export class Updater {
     autoUpdater.on('update-downloaded', (info) =>
       this.set({ state: 'ready', version: info.version })
     )
-    autoUpdater.on('error', (error) =>
-      this.set({ state: 'error', message: error?.message ?? String(error) })
-    )
+    autoUpdater.on('error', (error) => this.set({ state: 'error', message: explain(error) }))
   }
 
   private set(patch: Partial<UpdateStatus>): UpdateStatus {

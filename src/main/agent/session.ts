@@ -57,6 +57,8 @@ export class AgentSession {
   private running = false
   /** Paths the user named in this conversation; see findMentionedPaths. */
   private grants = new Set<string>()
+  /** Messages sent while a turn was running, delivered at the next boundary. */
+  private queued: Array<{ text: string; images: Array<{ mediaType: string; data: string }> }> = []
 
   constructor(private readonly deps: SessionDeps) {}
 
@@ -75,6 +77,7 @@ export class AgentSession {
     this.title = 'New session'
     this.totals = emptyUsage()
     this.grants.clear()
+    this.queued = []
     this.changes.clear()
   }
 
@@ -99,8 +102,19 @@ export class AgentSession {
     }
   }
 
+  /**
+   * Sending while a turn is running queues the message instead of refusing it.
+   * The agent picks it up at the next boundary — after the tools it is already
+   * running finish — so you can correct or extend a request without stopping
+   * the work and starting over.
+   */
   async send(text: string, images: Array<{ mediaType: string; data: string }> = []): Promise<void> {
-    if (this.running) throw new Error('A turn is already running. Stop it first.')
+    if (this.running) {
+      this.queued.push({ text, images })
+      for (const granted of await findMentionedPaths(text)) this.grants.add(granted)
+      this.deps.emit({ type: 'queued', text, pending: this.queued.length })
+      return
+    }
 
     const content: ContentBlock[] = []
     for (const image of images) {
@@ -160,13 +174,26 @@ export class AgentSession {
         const outcome = await this.runOneTurn(resolved, system, trimmed.messages, tools, signal)
         if (!outcome) break
 
-        if (outcome.toolUses.length === 0) break
+        if (outcome.toolUses.length === 0) {
+          // The agent is done, but the user typed something while it worked.
+          if (this.queued.length === 0 || signal.aborted) break
+          this.messages.push({
+            id: randomUUID(),
+            role: 'user',
+            content: this.drainQueue(),
+            createdAt: Date.now()
+          })
+          continue
+        }
 
         const results = await this.runTools(outcome.toolUses, outcome.messageId, tools, signal)
         this.messages.push({
           id: randomUUID(),
           role: 'user',
-          content: results,
+          // Anything typed mid-turn rides along with the tool results rather
+          // than becoming a second consecutive user message, which providers
+          // that require strict alternation reject.
+          content: [...results, ...this.drainQueue()],
           createdAt: Date.now()
         })
 
@@ -354,6 +381,27 @@ export class AgentSession {
     }
   }
 
+  /** Empties the mid-turn queue into content blocks for the next request. */
+  private drainQueue(): ContentBlock[] {
+    if (this.queued.length === 0) return []
+
+    const pending = this.queued
+    this.queued = []
+    const blocks: ContentBlock[] = []
+
+    for (const entry of pending) {
+      for (const image of entry.images) {
+        blocks.push({ type: 'image', mediaType: image.mediaType, data: image.data })
+      }
+      // Labelled so the model reads it as a new instruction from the user
+      // rather than as part of whatever tool output precedes it.
+      blocks.push({ type: 'text', text: `[The user added while you were working]\n${entry.text}` })
+    }
+
+    this.deps.emit({ type: 'queued', text: '', pending: 0 })
+    return blocks
+  }
+
   private async runTools(
     toolUses: ToolUseBlock[],
     messageId: string,
@@ -429,6 +477,7 @@ export class AgentSession {
     const settings = this.deps.settings()
     const verdict = evaluatePermission({
       readOnly: settings.readOnly,
+      bypassPermissions: settings.bypassPermissions,
       editApproval: settings.editApproval,
       commandApproval: settings.commandApproval,
       allowRules: settings.allowRules,
