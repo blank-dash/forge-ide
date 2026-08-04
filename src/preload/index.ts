@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type {
   AgentEvent,
   FileEntry,
@@ -89,6 +89,20 @@ export interface AgentState {
 const api = {
   bootstrap: () => call<Bootstrap>('app:bootstrap'),
   openExternal: (url: string) => call<boolean>('app:open-external', url),
+
+  /**
+   * Real filesystem path of a File from a paste or drop. `File.path` was
+   * removed in Electron 32, so this is the only way to get it, and it has to
+   * happen in the preload where `webUtils` lives.
+   */
+  pathForFile: (file: File): string => {
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      // Clipboard bitmaps and synthetic Files have no path on disk.
+      return ''
+    }
+  },
 
   settings: {
     get: () => call<Settings>('settings:get'),

@@ -9,10 +9,26 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }): JSX.Elemen
 
   if (entry.role === 'user') {
     const text = entry.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join('')
+    const images = entry.attachments?.filter((entry_) => entry_.kind === 'image') ?? []
+
     return (
       <div className="msg msg-user">
         <span className="caret">&gt;</span>
-        <span className="text">{text}</span>
+        <span className="text">
+          {text}
+          {images.length > 0 && (
+            <span className="msg-thumbs">
+              {images.map((image) => (
+                <img
+                  key={image.id}
+                  src={image.kind === 'image' ? image.preview : ''}
+                  alt={image.name}
+                  title={image.name}
+                />
+              ))}
+            </span>
+          )}
+        </span>
       </div>
     )
   }

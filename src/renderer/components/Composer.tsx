@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EFFORT_LEVELS } from '@shared/types'
 import type { EditApproval, ReasoningEffort, Settings } from '@shared/types'
+import {
+  composeMessage,
+  isImage,
+  isLargePaste,
+  releaseAttachment,
+  toFileAttachment,
+  toImageAttachment,
+  toTextAttachment,
+  tooLarge,
+  type Attachment
+} from '../attachments'
 import { useStore } from '../store'
+import AttachmentStrip from './AttachmentStrip'
+import ContextMeter from './ContextMeter'
 import ModelPicker from './ModelPicker'
 
 interface SlashCommand {
@@ -25,19 +38,119 @@ export default function Composer() {
   const totals = useStore((state) => state.totals)
   const changeCount = useStore((state) => state.changes.length)
 
-  const reasoning = supportsThinking(settings)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [dragging, setDragging] = useState(false)
 
-  const submit = useCallback(async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    useStore.getState().pushUser(trimmed)
-    setValue('')
-    try {
-      await window.forge.agent.send(trimmed)
-    } catch (error) {
-      useStore.getState().pushError((error as Error).message)
-    }
+  const reasoning = supportsThinking(settings)
+  const visionOk = supportsVision(settings)
+
+  const addAttachments = useCallback(async (incoming: Attachment[]) => {
+    if (incoming.length === 0) return
+    setAttachments((current) => [...current, ...incoming])
   }, [])
+
+  /** Shared by paste and drop: images are embedded, anything else is a path. */
+  const ingestFiles = useCallback(
+    async (files: File[]): Promise<Attachment[]> => {
+      const built = await Promise.all(
+        files.map(async (file) => {
+          const path = window.forge.pathForFile(file)
+          // An image with no path is a clipboard bitmap — a screenshot. One
+          // with a path could go either way, and seeing it beats reading it.
+          if (isImage(file)) return toImageAttachment(file)
+          if (path) return toFileAttachment(file, path)
+          return null
+        })
+      )
+
+      const usable = built.filter((entry): entry is Attachment => entry !== null)
+      if (usable.length < files.length) {
+        useStore
+          .getState()
+          .pushError('Some items could not be attached — they had no file on disk.')
+      }
+      return usable
+    },
+    []
+  )
+
+  const onPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const data = event.clipboardData
+      const files = Array.from(data.files ?? [])
+
+      if (files.length > 0) {
+        event.preventDefault()
+        void ingestFiles(files).then(addAttachments)
+        return
+      }
+
+      const text = data.getData('text/plain')
+      if (text && isLargePaste(text)) {
+        // Keep the composer readable; the whole thing still goes to the model.
+        event.preventDefault()
+        void addAttachments([toTextAttachment(text)])
+      }
+    },
+    [addAttachments, ingestFiles]
+  )
+
+  const onDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      setDragging(false)
+      const files = Array.from(event.dataTransfer.files ?? [])
+      if (files.length > 0) void ingestFiles(files).then(addAttachments)
+    },
+    [addAttachments, ingestFiles]
+  )
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((current) => {
+      const target = current.find((entry) => entry.id === id)
+      if (target) releaseAttachment(target)
+      return current.filter((entry) => entry.id !== id)
+    })
+  }, [])
+
+  const attachmentsRef = useRef<Attachment[]>([])
+  attachmentsRef.current = attachments
+
+  // Object URLs outlive the component unless they are revoked explicitly.
+  useEffect(
+    () => () => {
+      for (const entry of attachmentsRef.current) releaseAttachment(entry)
+    },
+    []
+  )
+
+  const submit = useCallback(
+    async (text: string, pending: Attachment[] = []) => {
+      const usable = pending.filter((entry) => !tooLarge(entry))
+      const dropped = pending.length - usable.length
+
+      const payload = composeMessage(text, visionOk ? usable : usable.filter((e) => e.kind !== 'image'))
+      if (!payload.text.trim() && payload.images.length === 0) return
+
+      useStore.getState().pushUser(payload.text, usable)
+      setValue('')
+      setAttachments([])
+      for (const entry of pending) releaseAttachment(entry)
+
+      if (dropped > 0) {
+        useStore
+          .getState()
+          .pushError(`${dropped} image${dropped === 1 ? ' was' : 's were'} over 4 MB and not sent.`)
+      }
+
+      try {
+        await window.forge.agent.send(payload.text, payload.images)
+      } catch (error) {
+        useStore.getState().pushError((error as Error).message)
+      }
+    },
+    [visionOk]
+  )
 
   const commands = useMemo<SlashCommand[]>(
     () => [
@@ -191,8 +304,8 @@ export default function Composer() {
       return
     }
     if (running) return
-    await submit(value)
-  }, [slashMatches, menuIndex, running, submit, value])
+    await submit(value, attachments)
+  }, [slashMatches, menuIndex, running, submit, value, attachments])
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (menuOpen) {
@@ -270,21 +383,41 @@ export default function Composer() {
         </div>
       )}
 
-      <div className="composer-box">
+      <AttachmentStrip
+        attachments={attachments}
+        visionSupported={visionOk}
+        onRemove={removeAttachment}
+      />
+
+      <div
+        className={`composer-box ${dragging ? 'dragging' : ''}`}
+        onDrop={onDrop}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={(event) => {
+          // Ignore the events fired while moving between child elements.
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false)
+        }}
+      >
         <span className="caret">&gt;</span>
         <textarea
           ref={textarea}
           rows={1}
           value={value}
           placeholder={
-            running
-              ? 'Working… Esc to interrupt'
-              : settings.mode === 'chat'
-                ? 'Ask about the code — / for commands, @ for files'
-                : 'Describe the change — / for commands, @ for files'
+            dragging
+              ? 'Drop files here'
+              : running
+                ? 'Working… Esc to interrupt'
+                : settings.mode === 'chat'
+                  ? 'Ask about the code — / commands, @ files, paste images'
+                  : 'Describe the change — / commands, @ files, paste images'
           }
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={onKeyDown}
+          onPaste={onPaste}
           spellCheck={false}
         />
       </div>
@@ -348,6 +481,8 @@ export default function Composer() {
           </button>
         )}
 
+        <ContextMeter />
+
         {totals.costUsd > 0 && <span>${totals.costUsd.toFixed(4)}</span>}
 
         {running && (
@@ -376,6 +511,10 @@ function describeModel(settings: Settings): string {
 /** The effort control only makes sense for models that actually reason. */
 function supportsThinking(settings: Settings): boolean {
   return activeModel(settings).model?.supportsThinking === true
+}
+
+function supportsVision(settings: Settings): boolean {
+  return activeModel(settings).model?.supportsVision === true
 }
 
 function nextEffort(current: ReasoningEffort): ReasoningEffort {

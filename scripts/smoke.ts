@@ -15,6 +15,7 @@ import { countChanges, renderDiff } from '../src/main/agent/diff'
 import { findMentionedPaths } from '../src/main/agent/paths'
 import { evaluatePermission, matchesRule, ruleTarget } from '../src/main/agent/permissions'
 import { readSse } from '../src/main/providers/sse'
+import { composeMessage, isLargePaste, tooLarge } from '../src/renderer/attachments'
 
 let passed = 0
 let failed = 0
@@ -213,6 +214,92 @@ test('an external path is always the user’s call', () => {
     }),
     'ask'
   )
+})
+
+/* ------------------------------------------------------------------ */
+
+console.log('attachments')
+
+test('a plain message passes through untouched', () => {
+  const out = composeMessage('fix the parser', [])
+  assert.equal(out.text, 'fix the parser')
+  assert.deepEqual(out.images, [])
+})
+
+test('file attachments become paths the agent can act on', () => {
+  const out = composeMessage('what does this do?', [
+    { kind: 'file', id: '1', name: 'a.ts', path: 'C:\\proj\\a.ts', bytes: 10 }
+  ])
+  assert.ok(out.text.includes('C:\\proj\\a.ts'), out.text)
+  assert.ok(out.text.includes('what does this do?'), out.text)
+})
+
+test('several files are listed one per line', () => {
+  const out = composeMessage('', [
+    { kind: 'file', id: '1', name: 'a.ts', path: '/p/a.ts', bytes: 1 },
+    { kind: 'file', id: '2', name: 'b.ts', path: '/p/b.ts', bytes: 1 }
+  ])
+  assert.ok(out.text.includes('/p/a.ts') && out.text.includes('/p/b.ts'), out.text)
+  assert.equal(out.text.split('\n').length, 3)
+})
+
+test('images travel as image blocks, not as text', () => {
+  const out = composeMessage('look', [
+    {
+      kind: 'image',
+      id: '1',
+      name: 'shot.png',
+      mediaType: 'image/png',
+      data: 'AAAA',
+      preview: 'blob:x',
+      bytes: 100
+    }
+  ])
+  assert.equal(out.text, 'look')
+  assert.deepEqual(out.images, [{ mediaType: 'image/png', data: 'AAAA' }])
+})
+
+test('a long paste is fenced so it cannot be mistaken for instructions', () => {
+  const out = composeMessage('explain this', [
+    { kind: 'text', id: '1', name: 'p', text: 'line1\nline2', lines: 2 }
+  ])
+  assert.ok(out.text.includes('```\nline1\nline2\n```'), out.text)
+})
+
+test('an image-only message still sends', () => {
+  const out = composeMessage('', [
+    {
+      kind: 'image',
+      id: '1',
+      name: 's.png',
+      mediaType: 'image/png',
+      data: 'B',
+      preview: 'blob:y',
+      bytes: 1
+    }
+  ])
+  assert.equal(out.text, '')
+  assert.equal(out.images.length, 1)
+})
+
+test('large-paste detection triggers on lines or on length', () => {
+  assert.equal(isLargePaste('short'), false)
+  assert.equal(isLargePaste('x\n'.repeat(30)), true)
+  assert.equal(isLargePaste('y'.repeat(3000)), true)
+})
+
+test('oversized images are flagged', () => {
+  const image = {
+    kind: 'image' as const,
+    id: '1',
+    name: 'big.png',
+    mediaType: 'image/png',
+    data: '',
+    preview: '',
+    bytes: 9 * 1024 * 1024
+  }
+  assert.equal(tooLarge(image), true)
+  assert.equal(tooLarge({ ...image, bytes: 1024 }), false)
 })
 
 /* ------------------------------------------------------------------ */

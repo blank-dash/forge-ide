@@ -300,6 +300,15 @@ export type AgentEvent =
   | { type: 'tool_end'; messageId: string; toolUseId: string; result: ToolResultBlock }
   | { type: 'turn_end'; messageId: string; usage: TokenUsage; stopReason: string }
   | { type: 'idle' }
+  | {
+      type: 'context'
+      /** Tokens the next request would carry. */
+      used: number
+      /** The active model's window, as configured. */
+      window: number
+      /** True before a provider has reported real usage for this conversation. */
+      estimated: boolean
+    }
   | { type: 'error'; message: string; detail?: string }
   | { type: 'notice'; message: string }
   | { type: 'file_changed'; path: string }

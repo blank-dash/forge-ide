@@ -121,6 +121,34 @@ Approving with **Always allow** saves a rule such as `Bash(git status *)` or
 including auto mode. Rejecting lets you type a reason, which is fed back to the
 model as the tool result — the usual way to steer it without restarting a turn.
 
+## Pasting and dropping
+
+Paste or drag anything into the composer:
+
+- **Screenshots and images** — pasted straight from the clipboard, downscaled to
+  1568px on the long edge (larger is downsampled server-side anyway) and sent as
+  real image blocks. Thumbnails appear in the composer and in the transcript.
+- **Files** — attached by *path*, not by content, so the agent reads exactly as
+  much as it needs with its normal tools. A pasted file counts as you naming
+  that path, so it needs no separate approval even outside the workspace.
+- **Long text** — a paste over ~24 lines collapses into a chip instead of
+  flooding the composer. It is still sent in full, fenced so it cannot be
+  mistaken for instructions.
+
+If the current model is not marked vision-capable, images are held back with a
+visible warning rather than silently dropped by the API.
+
+## Context meter
+
+Next to the model picker: how full the window is, as a bar and a number.
+
+Before the first reply it shows Forge's own estimate, prefixed with `~`.
+Afterwards it shows the provider's reported input count, which is the real
+figure. It turns amber past 70% and red past 90% — the point where trimming
+starts throwing away old turns. Clicking it opens the model settings, where the
+context window is editable per model, which matters for custom endpoints Forge
+cannot know the limits of.
+
 ## Files anywhere on your machine
 
 **A path you typed yourself needs no approval.** Write `fix C:\proj\main.py` and

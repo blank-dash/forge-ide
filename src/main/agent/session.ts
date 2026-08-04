@@ -147,6 +147,13 @@ export class AgentSession {
           this.deps.emit({ type: 'notice', message: trimmed.notice })
         }
 
+        this.deps.emit({
+          type: 'context',
+          used: trimmed.estimatedTokens,
+          window: resolved.model.contextWindow,
+          estimated: true
+        })
+
         const outcome = await this.runOneTurn(resolved, system, trimmed.messages, tools, signal)
         if (!outcome) break
 
@@ -318,6 +325,18 @@ export class AgentSession {
     }
 
     this.deps.emit({ type: 'turn_end', messageId, usage: turnUsage, stopReason })
+
+    // The provider's own input count is the real context size, so it replaces
+    // the estimate as soon as one request has completed.
+    const consumed = usage.input + usage.cacheRead + usage.cacheWrite
+    if (consumed > 0) {
+      this.deps.emit({
+        type: 'context',
+        used: consumed + usage.output,
+        window: resolved.model.contextWindow,
+        estimated: false
+      })
+    }
   }
 
   private async runTools(

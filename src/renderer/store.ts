@@ -11,6 +11,7 @@ import type {
   ToolResultBlock,
   ToolUseBlock
 } from '@shared/types'
+import type { Attachment } from './attachments'
 import type { Bootstrap } from '../preload'
 
 export type RenderBlock =
@@ -25,6 +26,8 @@ export interface ChatEntry {
   streaming: boolean
   model?: string
   usage?: TokenUsage
+  /** Thumbnails and chips shown under a user turn that carried attachments. */
+  attachments?: Attachment[]
 }
 
 export interface ChatError {
@@ -73,6 +76,8 @@ interface State {
   permission: PermissionRequest | null
   /** Id of the conversation currently loaded in the main process. */
   sessionId: string | null
+  /** How full the model's context window is for the next request. */
+  context: { used: number; window: number; estimated: boolean } | null
 
   changes: PendingChange[]
   git: GitStatus | null
@@ -94,7 +99,7 @@ interface State {
   saveSettings(patch: Partial<Settings>): Promise<void>
   patchUi(patch: Partial<UiState>): void
 
-  pushUser(text: string): void
+  pushUser(text: string, attachments?: Attachment[]): void
   applyEvent(event: AgentEvent): void
   pushError(message: string, detail?: string): void
   dismissError(id: string): void
@@ -137,6 +142,7 @@ export const useStore = create<State>((set, get) => ({
   totals: EMPTY_USAGE,
   permission: null,
   sessionId: null,
+  context: null,
 
   changes: [],
   git: null,
@@ -176,7 +182,7 @@ export const useStore = create<State>((set, get) => ({
 
   patchUi: (patch) => set((state) => ({ ui: { ...state.ui, ...patch } })),
 
-  pushUser: (text) =>
+  pushUser: (text, attachments) =>
     set((state) => ({
       running: true,
       entries: [
@@ -185,7 +191,8 @@ export const useStore = create<State>((set, get) => ({
           id: `user-${Date.now()}-${state.entries.length}`,
           role: 'user',
           blocks: [{ kind: 'text', text }],
-          streaming: false
+          streaming: false,
+          attachments: attachments?.length ? attachments : undefined
         }
       ]
     })),
@@ -266,6 +273,12 @@ export const useStore = create<State>((set, get) => ({
         }))
         break
 
+      case 'context':
+        set({
+          context: { used: event.used, window: event.window, estimated: event.estimated }
+        })
+        break
+
       case 'error':
         get().pushError(event.message, event.detail)
         break
@@ -305,7 +318,15 @@ export const useStore = create<State>((set, get) => ({
   dismissError: (id) => set((state) => ({ errors: state.errors.filter((e) => e.id !== id) })),
   dismissNotice: (id) => set((state) => ({ notices: state.notices.filter((n) => n.id !== id) })),
 
-  clearChat: () => set({ entries: [], errors: [], notices: [], totals: EMPTY_USAGE, changes: [] }),
+  clearChat: () =>
+    set({
+      entries: [],
+      errors: [],
+      notices: [],
+      totals: EMPTY_USAGE,
+      changes: [],
+      context: null
+    }),
 
   loadState: (payload) =>
     set({
@@ -314,7 +335,9 @@ export const useStore = create<State>((set, get) => ({
       changes: payload.changes,
       sessionId: payload.sessionId,
       errors: [],
-      notices: []
+      notices: [],
+      // A reloaded conversation has no measured context until it is used again.
+      context: null
     }),
 
   setPermission: (permission) => set({ permission }),

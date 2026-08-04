@@ -115,6 +115,13 @@ async function adoptArgvFolder(argv: string[]): Promise<void> {
   getWindow()?.webContents.send('workspace:changed', folder)
 }
 
+// A build run from source gets its own profile. Without this it fights the
+// installed app for the single-instance lock — the source build just exits,
+// silently and confusingly — and the two would share one settings file.
+if (!app.isPackaged) {
+  app.setPath('userData', `${app.getPath('userData')}-dev`)
+}
+
 // A second instance would fight over the settings file and MCP child processes.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
