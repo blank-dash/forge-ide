@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EFFORT_LEVELS } from '@shared/types'
-import type { EditApproval, ReasoningEffort, Settings } from '@shared/types'
+import type { EditApproval, Settings } from '@shared/types'
 import {
   composeMessage,
   isImage,
@@ -15,6 +14,7 @@ import {
 import { useStore } from '../store'
 import AttachmentStrip from './AttachmentStrip'
 import ContextMeter from './ContextMeter'
+import EffortPicker from './EffortPicker'
 import ModelPicker from './ModelPicker'
 
 interface SlashCommand {
@@ -40,6 +40,7 @@ export default function Composer() {
 
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
+  const [effortOpen, setEffortOpen] = useState(false)
 
   const reasoning = supportsThinking(settings)
   const visionOk = supportsVision(settings)
@@ -430,21 +431,30 @@ export default function Composer() {
           {pickerOpen && <ModelPicker onClose={() => setPickerOpen(false)} />}
         </div>
 
-        <button
-          className={`pill ${settings.effort !== 'off' && reasoning ? 'accent' : ''}`}
-          onClick={() => {
-            if (reasoning) void saveSettings({ effort: nextEffort(settings.effort) })
-            else patchUi({ settingsOpen: true, settingsSection: 'providers' })
-          }}
-          style={reasoning ? undefined : { opacity: 0.55 }}
-          title={
-            reasoning
-              ? 'How hard the model thinks before answering. Click to cycle: off → low → medium → high → max.'
-              : `${describeModel(settings)} is not marked as a reasoning model, so effort does nothing. Tick "thinking" for it in Settings → Providers.`
-          }
-        >
-          effort: {settings.effort}
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            className={`pill ${settings.effort !== 'off' && reasoning ? 'accent' : ''}`}
+            onClick={() => {
+              if (reasoning) setEffortOpen((open) => !open)
+              else patchUi({ settingsOpen: true, settingsSection: 'providers' })
+            }}
+            style={reasoning ? undefined : { opacity: 0.55 }}
+            title={
+              reasoning
+                ? 'How hard the model thinks before answering.'
+                : `${describeModel(settings)} is not marked as a reasoning model, so effort does nothing. Tick "thinking" for it in Settings → Providers.`
+            }
+          >
+            effort: {settings.effort} {reasoning ? '▴' : ''}
+          </button>
+          {effortOpen && (
+            <EffortPicker
+              model={activeModel(settings).model}
+              kind={activeModel(settings).provider?.kind}
+              onClose={() => setEffortOpen(false)}
+            />
+          )}
+        </div>
 
         {settings.mode === 'agent' && (
           <>
@@ -500,7 +510,7 @@ function activeModel(settings: Settings) {
   const providerId = settings.activeModel.slice(0, sep)
   const modelId = settings.activeModel.slice(sep + 1)
   const provider = settings.providers.find((entry) => entry.id === providerId)
-  return { modelId, model: provider?.models.find((entry) => entry.id === modelId) }
+  return { modelId, provider, model: provider?.models.find((entry) => entry.id === modelId) }
 }
 
 function describeModel(settings: Settings): string {
@@ -517,6 +527,3 @@ function supportsVision(settings: Settings): boolean {
   return activeModel(settings).model?.supportsVision === true
 }
 
-function nextEffort(current: ReasoningEffort): ReasoningEffort {
-  return EFFORT_LEVELS[(EFFORT_LEVELS.indexOf(current) + 1) % EFFORT_LEVELS.length]
-}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EditApproval, ProviderConfig, Settings } from '@shared/types'
 import { useStore } from '../store'
 import McpSettings from './McpSettings'
@@ -26,6 +26,32 @@ export default function SettingsModal() {
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(stored)
   const close = useCallback(() => patchUi({ settingsOpen: false }), [patchUi])
+
+  /**
+   * The agent writes settings too: an "always allow" answer adds a rule, and
+   * dragging a panel saves the layout. Without folding those in, saving this
+   * dialog would quietly undo them — so every key the user has not touched
+   * follows what is on disk.
+   */
+  const syncedFrom = useRef(stored)
+  useEffect(() => {
+    const previous = syncedFrom.current
+    if (previous === stored) return
+    syncedFrom.current = stored
+
+    setDraft((current) => {
+      const merged = { ...current } as Record<string, unknown>
+      const before = previous as unknown as Record<string, unknown>
+      const after = stored as unknown as Record<string, unknown>
+
+      for (const key of Object.keys(after)) {
+        const changedExternally = JSON.stringify(before[key]) !== JSON.stringify(after[key])
+        const untouchedHere = JSON.stringify(merged[key]) === JSON.stringify(before[key])
+        if (changedExternally && untouchedHere) merged[key] = after[key]
+      }
+      return merged as unknown as Settings
+    })
+  }, [stored])
 
   const save = useCallback(async () => {
     setSaving(true)
@@ -356,8 +382,50 @@ export default function SettingsModal() {
                 <UpdatePanel />
 
                 <div className="field">
-                  <label>Settings file</label>
+                  <label>Where your configuration lives</label>
                   <div className="code-box">{bootstrap?.settingsPath}</div>
+                  <div className="hint">
+                    Every provider, model, rule and approved folder is written here the moment you
+                    change it, atomically, with a <code>.bak</code> kept alongside. Nothing is sent
+                    anywhere. A build run from source uses a separate <code>-dev</code> profile, so
+                    models added there will not show up in the installed app.
+                  </div>
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button
+                      className="btn"
+                      onClick={async () => {
+                        try {
+                          const target = await window.forge.settings.export()
+                          if (target) setError(null)
+                        } catch (exportError) {
+                          setError((exportError as Error).message)
+                        }
+                      }}
+                    >
+                      Export to a file…
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={async () => {
+                        try {
+                          const next = await window.forge.settings.import()
+                          if (next) {
+                            useStore.getState().setSettings(next)
+                            setDraft(next)
+                          }
+                        } catch (importError) {
+                          setError((importError as Error).message)
+                        }
+                      }}
+                    >
+                      Import…
+                    </button>
+                    <span style={{ flex: 2 }} />
+                  </div>
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    API keys stay encrypted in the export, so it only restores on a machine whose
+                    keychain can read them. Everything else transfers.
+                  </div>
                 </div>
                 <div className="field">
                   <label>API key storage</label>

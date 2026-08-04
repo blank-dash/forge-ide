@@ -14,6 +14,7 @@ import SetupWizard from './components/SetupWizard'
 import StatusBar from './components/StatusBar'
 import TerminalPane from './components/TerminalPane'
 import TitleBar from './components/TitleBar'
+import UpdateToast from './components/UpdateToast'
 import { useStore, type SidePanel } from './store'
 
 const SIDE_PANELS: Array<{ id: SidePanel; label: string; hint: string }> = [
@@ -155,6 +156,7 @@ export default function App() {
         <ChatView />
         <StatusBar />
         <PermissionDialog />
+        <UpdateToast />
         {ui.settingsOpen && (
           <ErrorBoundary label="Settings">
             <SettingsModal />
@@ -249,6 +251,7 @@ export default function App() {
       <StatusBar />
 
       <PermissionDialog />
+      <UpdateToast />
       {ui.settingsOpen && (
         <ErrorBoundary label="Settings">
           <SettingsModal />

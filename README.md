@@ -138,6 +138,22 @@ Paste or drag anything into the composer:
 If the current model is not marked vision-capable, images are held back with a
 visible warning rather than silently dropped by the API.
 
+## Your configuration stays on this machine
+
+Providers, models, rules, approved folders and panel sizes are written to disk
+the moment you change them — synchronously and atomically, so killing the app
+right after adding a model cannot lose it, and a crash mid-write cannot corrupt
+the file. A `.bak` of the last good copy sits next to it and is used
+automatically if the main file ever fails to parse, rather than silently
+resetting you to defaults.
+
+Settings → About shows the exact path and offers **Export** and **Import**, so a
+whole setup moves between machines in one file. API keys stay encrypted in the
+export — it only restores on a machine whose keychain can read them.
+
+A build run from source uses a separate `-dev` profile, so experimenting with
+the source tree cannot disturb the installed app's configuration.
+
 ## Context meter
 
 Next to the model picker: how full the window is, as a bar and a number.

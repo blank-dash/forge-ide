@@ -79,6 +79,14 @@ export default function StatusBar() {
       >
         {bootstrap?.keysEncrypted ? '🔒' : '🔓'}
       </span>
+
+      <button
+        className="status-version"
+        onClick={() => patchUi({ settingsOpen: true, settingsSection: 'about' })}
+        title="Version — click to check for updates"
+      >
+        v{bootstrap?.appVersion ?? '—'}
+      </button>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS } from '@shared/defaults'
 import type {
   AgentEvent,
   GitStatus,
+  LayoutState,
   McpServerStatus,
   PendingChange,
   PermissionRequest,
@@ -166,7 +167,14 @@ export const useStore = create<State>((set, get) => ({
     mainView: 'editor'
   },
 
-  init: (bootstrap) => set({ bootstrap, settings: bootstrap.settings, ready: true }),
+  init: (bootstrap) =>
+    set((state) => ({
+      bootstrap,
+      settings: bootstrap.settings,
+      ready: true,
+      // Come back with the panels the user left open, at the sizes they set.
+      ui: { ...state.ui, ...bootstrap.settings.layout }
+    })),
   setSettings: (settings) => set({ settings }),
 
   saveSettings: async (patch) => {
@@ -180,7 +188,10 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  patchUi: (patch) => set((state) => ({ ui: { ...state.ui, ...patch } })),
+  patchUi: (patch) => {
+    set((state) => ({ ui: { ...state.ui, ...patch } }))
+    if (LAYOUT_KEYS.some((key) => key in patch)) scheduleLayoutSave()
+  },
 
   pushUser: (text, attachments) =>
     set((state) => ({
@@ -387,6 +398,42 @@ export const useStore = create<State>((set, get) => ({
 
   requestSave: () => set((state) => ({ saveRequest: state.saveRequest + 1 }))
 }))
+
+const LAYOUT_KEYS = [
+  'sidebarWidth',
+  'chatWidth',
+  'chatSidebarWidth',
+  'terminalHeight',
+  'terminalOpen',
+  'sidePanel'
+] as const satisfies ReadonlyArray<keyof LayoutState>
+
+let layoutTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Dragging a divider fires continuously, so the layout is written once the
+ * user stops rather than on every pixel.
+ */
+function scheduleLayoutSave(): void {
+  if (layoutTimer) clearTimeout(layoutTimer)
+  layoutTimer = setTimeout(() => {
+    layoutTimer = null
+    const state = useStore.getState()
+    if (!state.ready) return
+
+    const layout: LayoutState = {
+      sidebarWidth: state.ui.sidebarWidth,
+      chatWidth: state.ui.chatWidth,
+      chatSidebarWidth: state.ui.chatSidebarWidth,
+      terminalHeight: state.ui.terminalHeight,
+      terminalOpen: state.ui.terminalOpen,
+      sidePanel: state.ui.sidePanel
+    }
+
+    if (JSON.stringify(layout) === JSON.stringify(state.settings.layout)) return
+    void state.saveSettings({ layout })
+  }, 600)
+}
 
 function mapEntry(
   entries: ChatEntry[],

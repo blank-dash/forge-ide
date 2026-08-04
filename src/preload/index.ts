@@ -107,6 +107,9 @@ const api = {
   settings: {
     get: () => call<Settings>('settings:get'),
     set: (next: Settings) => call<Settings>('settings:set', next),
+    /** Writes every provider, model and rule to a file; null when cancelled. */
+    export: () => call<string | null>('settings:export'),
+    import: () => call<Settings | null>('settings:import'),
     onChanged: (handler: (settings: Settings) => void) => subscribe('settings:changed', handler)
   },
 

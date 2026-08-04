@@ -709,6 +709,93 @@ select {
   background: var(--red-bg);
 }
 
+/* Update toast */
+
+.update-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 38px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  max-width: 380px;
+  padding: 11px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+  animation: toast-in 260ms var(--ease);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.update-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.update-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg-0);
+}
+
+.update-sub {
+  font-size: 11.5px;
+  color: var(--fg-2);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.update-progress {
+  height: 3px;
+  margin-top: 7px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.update-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms var(--ease);
+}
+
+.status-version {
+  color: var(--fg-3);
+}
+.status-version:hover {
+  color: var(--accent);
+}
+
+.popover-note {
+  padding: 8px 11px 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--fg-3);
+  line-height: 1.5;
+}
+
 /* Context meter */
 
 .ctx-meter {

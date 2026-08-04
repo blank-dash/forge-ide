@@ -1,3 +1,4 @@
+import { readFile, writeFile } from 'node:fs/promises'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type {
   AgentEvent,
@@ -139,7 +140,7 @@ function registerHandlers(
   /* ---------------- app ---------------- */
 
   handle('app:bootstrap', async () => {
-    const loaded = await settings.load()
+    const loaded = settings.load()
     // A folder passed on the command line wins over the last-used one.
     const last = loaded.recentWorkspaces[0]
     if (last && !workspace.isExplicit) await workspace.open(last).catch(() => undefined)
@@ -179,6 +180,46 @@ function registerHandlers(
     if (JSON.stringify(before.mcpServers) !== JSON.stringify(saved.mcpServers)) {
       void mcp.sync(saved.mcpServers)
     }
+    return saved
+  })
+
+  handle('settings:export', async () => {
+    const window = getWindow()
+    if (!window) throw new Error('No window.')
+
+    const result = await dialog.showSaveDialog(window, {
+      title: 'Export Forge settings',
+      defaultPath: `forge-settings-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+
+    // API keys stay encrypted in the export, so it is only usable on a machine
+    // whose keychain can decrypt them — deliberately not a plain-text dump.
+    await writeFile(result.filePath, settings.serialize(), 'utf8')
+    return result.filePath
+  })
+
+  handle('settings:import', async () => {
+    const window = getWindow()
+    if (!window) throw new Error('No window.')
+
+    const result = await dialog.showOpenDialog(window, {
+      title: 'Import Forge settings',
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+
+    const raw = await readFile(result.filePaths[0], 'utf8')
+    const parsed = JSON.parse(raw) as Settings
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.providers)) {
+      throw new Error('That file does not look like a Forge settings export.')
+    }
+
+    const saved = settings.set(parsed)
+    send('settings:changed', saved)
+    void mcp.sync(saved.mcpServers)
     return saved
   })
 

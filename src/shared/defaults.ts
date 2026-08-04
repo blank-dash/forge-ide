@@ -133,6 +133,14 @@ export const DEFAULT_SETTINGS: Settings = {
   showThinking: true,
   autoSaveSessions: true,
   setupCompleted: false,
+  layout: {
+    sidebarWidth: 240,
+    chatWidth: 470,
+    chatSidebarWidth: 262,
+    terminalHeight: 220,
+    terminalOpen: false,
+    sidePanel: 'explorer'
+  },
   recentWorkspaces: []
 }
 

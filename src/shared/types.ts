@@ -345,7 +345,18 @@ export interface Settings {
   autoSaveSessions: boolean
   /** Set once the first-run wizard has been finished or skipped. */
   setupCompleted: boolean
+  /** Panel sizes and which panel was open, so the window comes back as you left it. */
+  layout: LayoutState
   recentWorkspaces: string[]
+}
+
+export interface LayoutState {
+  sidebarWidth: number
+  chatWidth: number
+  chatSidebarWidth: number
+  terminalHeight: number
+  terminalOpen: boolean
+  sidePanel: 'explorer' | 'git' | 'sessions'
 }
 
 /* ------------------------------------------------------------------ */

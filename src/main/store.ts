@@ -1,4 +1,11 @@
-import { promises as fs } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync
+} from 'node:fs'
 import path from 'node:path'
 import { app, safeStorage } from 'electron'
 import { BUILTIN_PROVIDERS, DEFAULT_SETTINGS } from '@shared/defaults'
@@ -14,10 +21,14 @@ const ENCRYPTED_PREFIX = 'enc:v1:'
  */
 export class SettingsStore {
   private cache: Settings = DEFAULT_SETTINGS
-  private writeQueue: Promise<void> = Promise.resolve()
 
   get file(): string {
     return path.join(app.getPath('userData'), 'settings.json')
+  }
+
+  /** Last known-good copy, kept so a corrupt write cannot cost the user their config. */
+  private get backupFile(): string {
+    return `${this.file}.bak`
   }
 
   get keysEncrypted(): boolean {
@@ -32,20 +43,27 @@ export class SettingsStore {
     return this.cache
   }
 
-  async load(): Promise<Settings> {
-    const raw = await fs.readFile(this.file, 'utf8').catch(() => null)
-    if (!raw) {
-      this.cache = DEFAULT_SETTINGS
+  /**
+   * Falls back to the backup before it falls back to defaults. Silently
+   * resetting someone's providers and API keys because one byte of JSON went
+   * bad is not an acceptable failure mode.
+   */
+  load(): Settings {
+    const primary = this.readFile(this.file)
+    if (primary) {
+      this.cache = migrate(primary)
       return this.cache
     }
 
-    try {
-      const parsed = JSON.parse(raw) as Partial<Settings>
-      this.cache = migrate(parsed)
-    } catch {
-      // A corrupt settings file must not brick the app.
-      this.cache = DEFAULT_SETTINGS
+    const backup = this.readFile(this.backupFile)
+    if (backup) {
+      this.cache = migrate(backup)
+      // Put the good copy back so the next read is clean.
+      this.persist()
+      return this.cache
     }
+
+    this.cache = DEFAULT_SETTINGS
     return this.cache
   }
 
@@ -59,20 +77,56 @@ export class SettingsStore {
     return this.set({ ...this.cache, ...partial })
   }
 
+  /** The exact bytes on disk, for the export button. */
+  serialize(): string {
+    return JSON.stringify(this.encrypted(), null, 2)
+  }
+
+  private readFile(target: string): Partial<Settings> | null {
+    try {
+      if (!existsSync(target)) return null
+      const parsed = JSON.parse(readFileSync(target, 'utf8')) as Partial<Settings>
+      // A truncated write can still parse as valid JSON of the wrong shape.
+      return parsed && typeof parsed === 'object' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Written synchronously and atomically.
+   *
+   * Synchronous because an async write can be lost if the process is killed in
+   * the moment after a model is added — which is exactly when it hurts. Atomic
+   * because a half-written settings file is worse than a stale one.
+   */
   private persist(): void {
-    const snapshot = this.cache
-    // Serialise writes so two rapid updates cannot interleave.
-    this.writeQueue = this.writeQueue.then(async () => {
-      const payload: Settings = {
-        ...snapshot,
-        providers: snapshot.providers.map((provider) => ({
-          ...provider,
-          apiKey: encryptKey(provider.apiKey)
-        }))
+    const payload = JSON.stringify(this.encrypted(), null, 2)
+    const target = this.file
+    const temporary = `${target}.tmp`
+
+    try {
+      mkdirSync(path.dirname(target), { recursive: true })
+
+      if (existsSync(target)) {
+        copyFileSync(target, this.backupFile)
       }
-      await fs.mkdir(path.dirname(this.file), { recursive: true })
-      await fs.writeFile(this.file, JSON.stringify(payload, null, 2), 'utf8')
-    })
+
+      writeFileSync(temporary, payload, 'utf8')
+      renameSync(temporary, target)
+    } catch (error) {
+      console.error('[settings] could not save', error)
+    }
+  }
+
+  private encrypted(): Settings {
+    return {
+      ...this.cache,
+      providers: this.cache.providers.map((provider) => ({
+        ...provider,
+        apiKey: encryptKey(provider.apiKey)
+      }))
+    }
   }
 }
 
@@ -171,6 +225,7 @@ function migrate(raw: Partial<Settings> & LegacySettings): Settings {
     allowRules: input.allowRules ?? [],
     denyRules: input.denyRules ?? [],
     externalRoots: input.externalRoots ?? [],
+    layout: { ...DEFAULT_SETTINGS.layout, ...(input.layout ?? {}) },
     mcpServers: (input.mcpServers ?? []).map((server) => ({
       ...server,
       args: server.args ?? [],
