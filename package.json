@@ -73,10 +73,20 @@
         {
           "target": "nsis",
           "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
             "x64"
           ]
         }
       ]
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -112,10 +122,29 @@
     "linux": {
       "icon": "build/icon.png",
       "category": "Development",
+      "synopsis": "Agentic IDE with bring-your-own-model support",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   }

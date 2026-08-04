@@ -18,7 +18,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            # node-pty resolves `@lydell/node-pty-${platform}-${arch}` at run
+            # time, so a cross-arch installer needs that arch's binary present
+            # at package time or its terminal silently degrades to pipes.
+            pty: '@lydell/node-pty-win32-x64 @lydell/node-pty-win32-arm64'
+          - os: macos-latest
+            pty: '@lydell/node-pty-darwin-x64 @lydell/node-pty-darwin-arm64'
+          - os: ubuntu-latest
+            pty: '@lydell/node-pty-linux-x64 @lydell/node-pty-linux-arm64'
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +38,15 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # `--force` is required: these packages declare os/cpu constraints that do
+      # not match the runner we are cross-building from.
+      - name: Add cross-arch pty binaries
+        run: npm install --no-save --force ${{ matrix.pty }}
+
+      - name: Install rpm tooling
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Typecheck
         run: npm run typecheck

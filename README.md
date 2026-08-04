@@ -15,12 +15,35 @@ working beside you.
 
 ## Install
 
-Grab the installer for your platform from
-[Releases](https://github.com/blank-dash/forge-ide/releases). Forge
-checks for updates on its own and tells you when one is ready — it never
+Grab your platform's build from
+[Releases](https://github.com/blank-dash/forge-ide/releases):
+
+| Platform | File |
+| --- | --- |
+| Windows 10/11 (Intel/AMD) | `Forge-<version>-x64-setup.exe` |
+| Windows on ARM | `Forge-<version>-arm64-setup.exe` |
+| Windows, no install | `Forge-<version>-x64-portable.exe` — runs from anywhere, including a USB stick |
+| macOS (Apple silicon) | `Forge-<version>-arm64.dmg` |
+| macOS (Intel) | `Forge-<version>-x64.dmg` |
+| Linux, any distro | `Forge-<version>-x86_64.AppImage` — `chmod +x` and run |
+| Debian / Ubuntu | `Forge-<version>-amd64.deb` |
+| Fedora / RHEL | `Forge-<version>-x86_64.rpm` |
+
+**The builds are not code-signed**, so the OS will warn you the first time:
+
+- **Windows** — SmartScreen shows "Windows protected your PC". Click **More
+  info → Run anyway**.
+- **macOS** — Gatekeeper says the app "cannot be opened". Right-click the app
+  → **Open**, then **Open** again. Or run
+  `xattr -dr com.apple.quarantine /Applications/Forge.app`.
+
+Signing needs a paid certificate tied to a real identity; the release workflow
+is ready for one but none is configured.
+
+Forge checks for updates on its own and tells you when one is ready — it never
 downloads or restarts without you asking.
 
-Or run it from source:
+### From source
 
 ```bash
 npm install
