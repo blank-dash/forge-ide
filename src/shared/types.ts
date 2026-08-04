@@ -377,7 +377,14 @@ export type AgentEvent =
   | { type: 'thinking_delta'; messageId: string; text: string }
   | { type: 'tool_start'; messageId: string; block: ToolUseBlock }
   | { type: 'tool_end'; messageId: string; toolUseId: string; result: ToolResultBlock }
-  | { type: 'turn_end'; messageId: string; usage: TokenUsage; stopReason: string }
+  | {
+      type: 'turn_end'
+      messageId: string
+      usage: TokenUsage
+      stopReason: string
+      /** Wall-clock time this turn took, in milliseconds. */
+      durationMs: number
+    }
   /** A turn announced but never delivered — a retried request. Drop it. */
   | { type: 'turn_abandoned'; messageId: string }
   | { type: 'idle' }

@@ -1,6 +1,6 @@
 ﻿<div align="center">
 
-<img src="build/icon-256.png" width="112" alt="Forge">
+<img src="build/icon-256.png" width="120" alt="Forge">
 
 # Forge
 
@@ -158,6 +158,13 @@ export — it only restores on a machine whose keychain can read them.
 A build run from source uses a separate `-dev` profile, so experimenting with
 the source tree cannot disturb the installed app's configuration.
 
+## What each turn cost
+
+Under every reply: how long it took, tokens in and out, thinking tokens where
+the provider reports them, cached tokens, and the price. Shown once the turn
+finishes rather than ticking live — a number moving while you read is a
+distraction, not information.
+
 ## Context meter
 
 Next to the model picker: how full the window is, as a bar and a number.
@@ -272,6 +279,10 @@ The things that break long agent sessions, and what Forge does about them:
   fighting over the settings file and MCP child processes.
 - **Window state** — size, position and maximised state are restored, and a
   position on a monitor you unplugged is discarded rather than opening off-screen.
+- **Fonts ship with the app.** Naming faces in a CSS stack and hoping the
+  system has them is what produced stair-stepped text; Inter and JetBrains Mono
+  are bundled, both with Cyrillic, and antialiasing is forced to grayscale
+  because subpixel rendering on dark backgrounds fringes.
 - **Editor and tree stay live** — files the agent creates or rewrites refresh in
   the tree and in open tabs, but never over your own unsaved edits.
 - **Interrupting is safe** — stopping a turn mid-stream drops the tool calls the

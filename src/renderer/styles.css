@@ -2694,3 +2694,69 @@ select {
   font-weight: 700;
   font-family: var(--sans);
 }
+
+/* Brand mark */
+
+.brand-svg {
+  display: block;
+  border-radius: 22%;
+  flex: none;
+}
+
+/*
+ * The thinking indicator: the mark spins while the glow breathes. Two separate
+ * animations at different periods so it never looks like a mechanical loop.
+ */
+.brand-svg.busy {
+  animation: mark-spin 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.brand-svg.busy g {
+  animation: mark-pulse 2.1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes mark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mark-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-svg.busy,
+  .brand-svg.busy g {
+    animation: mark-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* Per-turn stats under an assistant reply */
+
+.turn-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+.turn-stats .sep {
+  opacity: 0.4;
+}
+
+.thinking-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-2);
+  font-size: 12.5px;
+}

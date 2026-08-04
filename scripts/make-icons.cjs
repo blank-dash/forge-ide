@@ -1,17 +1,19 @@
 /**
- * Rasterises build/icon.svg into the PNGs electron-builder needs.
+ * Produces every icon size the packager needs from one source.
  *
- * Run with `npm run icons`. Electron is already a dependency and Chromium is a
- * better SVG renderer than anything we could add, so there is no reason to pull
- * in a rasteriser just for this.
+ * Prefers build/icon-source.png — the artwork as drawn — and falls back to
+ * rasterising build/icon.svg. Electron is already a dependency and Chromium
+ * resamples better than anything we could add for this, so there is no reason
+ * to pull in an image library.
  */
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, nativeImage } = require('electron')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
 const ROOT = path.join(__dirname, '..')
-const SOURCE = path.join(ROOT, 'build', 'icon.svg')
+const PNG_SOURCE = path.join(ROOT, 'build', 'icon-source.png')
+const SVG_SOURCE = path.join(ROOT, 'build', 'icon.svg')
 const MASTER = 1024
 
 const OUTPUTS = [
@@ -22,12 +24,11 @@ const OUTPUTS = [
 ]
 
 /**
- * Renders once at full size and downscales from that single capture.
- * Opening a fresh transparent BrowserWindow per size proved unreliable, and
- * Chromium's resampler is good enough that one render is also better quality
+ * Renders the SVG once at full size. Opening a fresh transparent window per
+ * size proved unreliable, and one render downscaled is also better quality
  * than several independent ones.
  */
-async function renderMaster(svg) {
+async function renderSvg(svg) {
   const window = new BrowserWindow({
     width: MASTER,
     height: MASTER,
@@ -38,19 +39,16 @@ async function renderMaster(svg) {
     useContentSize: true
   })
 
-  const page = `<!doctype html>
-    <html><head><meta charset="utf-8"><style>
-      html,body{margin:0;padding:0;background:transparent;overflow:hidden}
-      svg{display:block;width:${MASTER}px;height:${MASTER}px}
-    </style></head><body>${svg}</body></html>`
+  const page = '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    'html,body{margin:0;padding:0;background:transparent;overflow:hidden}' +
+    'svg{display:block;width:' + MASTER + 'px;height:' + MASTER + 'px}' +
+    '</style></head><body>' + svg + '</body></html>'
 
-  // A temp file rather than a data: URL — Chromium rejects long data URLs.
-  const scratch = path.join(os.tmpdir(), `forge-icon-master.html`)
+  const scratch = path.join(os.tmpdir(), 'forge-icon-master.html')
   fs.writeFileSync(scratch, page, 'utf8')
 
   try {
     await window.loadFile(scratch)
-    // One frame of settle time; capturing too early yields a blank bitmap.
     await new Promise((resolve) => setTimeout(resolve, 200))
     return await window.webContents.capturePage()
   } finally {
@@ -63,16 +61,27 @@ app.disableHardwareAcceleration()
 
 app.whenReady().then(async () => {
   try {
-    const master = await renderMaster(fs.readFileSync(SOURCE, 'utf8'))
+    let master
+    if (fs.existsSync(PNG_SOURCE)) {
+      master = nativeImage.createFromPath(PNG_SOURCE)
+      if (master.isEmpty()) throw new Error('could not read ' + PNG_SOURCE)
+      console.log('source: icon-source.png (' + master.getSize().width + 'px)')
+    } else {
+      master = await renderSvg(fs.readFileSync(SVG_SOURCE, 'utf8'))
+      console.log('source: icon.svg')
+    }
 
-    for (const { file, size } of OUTPUTS) {
-      const image = size === MASTER ? master : master.resize({ width: size, height: size, quality: 'best' })
+    for (const out of OUTPUTS) {
+      const image =
+        master.getSize().width === out.size
+          ? master
+          : master.resize({ width: out.size, height: out.size, quality: 'best' })
       const png = image.toPNG()
-      if (png.length === 0) throw new Error(`empty bitmap at ${size}px`)
+      if (png.length === 0) throw new Error('empty bitmap at ' + out.size + 'px')
 
-      fs.mkdirSync(path.dirname(file), { recursive: true })
-      fs.writeFileSync(file, png)
-      console.log(`wrote ${path.relative(ROOT, file)} (${size}px, ${png.length} bytes)`)
+      fs.mkdirSync(path.dirname(out.file), { recursive: true })
+      fs.writeFileSync(out.file, png)
+      console.log('wrote ' + path.relative(ROOT, out.file) + ' (' + out.size + 'px, ' + png.length + ' bytes)')
     }
 
     app.exit(0)

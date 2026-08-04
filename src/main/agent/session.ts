@@ -243,6 +243,7 @@ export class AgentSession {
       let text = ''
       let thinking = ''
       let emitted = false
+      const startedAt = Date.now()
 
       this.deps.emit({ type: 'turn_start', messageId, model: resolved.ref })
 
@@ -325,7 +326,7 @@ export class AgentSession {
             const stopped = errorResult(use.id, 'Interrupted before this tool ran.')
             this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result: stopped })
           }
-          this.finishTurn(messageId, resolved, blocks, thinking, text, [], usage, 'aborted')
+          this.finishTurn(messageId, resolved, blocks, thinking, text, [], usage, 'aborted', startedAt)
           return null
         }
 
@@ -345,7 +346,7 @@ export class AgentSession {
         continue
       }
 
-      this.finishTurn(messageId, resolved, blocks, thinking, text, toolUses, usage, stopReason)
+      this.finishTurn(messageId, resolved, blocks, thinking, text, toolUses, usage, stopReason, startedAt)
       return { messageId, toolUses }
     }
 
@@ -360,7 +361,8 @@ export class AgentSession {
     text: string,
     toolUses: ToolUseBlock[],
     usage: Omit<TokenUsage, 'costUsd'>,
-    stopReason: string
+    stopReason: string,
+    startedAt: number
   ): void {
     if (thinking) blocks.push({ type: 'thinking', text: thinking })
     if (text) blocks.push({ type: 'text', text })
@@ -382,7 +384,13 @@ export class AgentSession {
       })
     }
 
-    this.deps.emit({ type: 'turn_end', messageId, usage: turnUsage, stopReason })
+    this.deps.emit({
+      type: 'turn_end',
+      messageId,
+      usage: turnUsage,
+      stopReason,
+      durationMs: Date.now() - startedAt
+    })
 
     // The provider's own input count is the real context size, so it replaces
     // the estimate as soon as one request has completed.

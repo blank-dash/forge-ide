@@ -27,6 +27,8 @@ export interface ChatEntry {
   streaming: boolean
   model?: string
   usage?: TokenUsage
+  /** Wall-clock time the turn took, in milliseconds. */
+  durationMs?: number
   /** Thumbnails and chips shown under a user turn that carried attachments. */
   attachments?: Attachment[]
 }
@@ -282,7 +284,8 @@ export const useStore = create<State>((set, get) => ({
           entries: mapEntry(state.entries, event.messageId, (entry) => ({
             ...entry,
             streaming: false,
-            usage: event.usage
+            usage: event.usage,
+            durationMs: event.durationMs
           }))
         }))
         break

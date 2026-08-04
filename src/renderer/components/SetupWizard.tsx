@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ProviderConfig, ProviderTestResult, Settings } from '@shared/types'
 import { useStore } from '../store'
+import BrandMark from './BrandMark'
 
 type Step = 'welcome' | 'model' | 'folder' | 'done'
 
@@ -248,32 +249,7 @@ function isLocal(provider: ProviderConfig | undefined): boolean {
 function BrandBlock() {
   return (
     <div className="wizard-brand">
-      <svg viewBox="0 0 512 512" aria-hidden="true">
-        <rect width="512" height="512" rx="100" fill="#061A23" />
-        <g stroke="url(#wizardGradient)" fill="url(#wizardGradient)">
-          <path
-            d="M142 148 L270 256 L142 364"
-            strokeWidth="48"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-          <rect x="284" y="346" width="110" height="42" rx="21" stroke="none" />
-        </g>
-        <defs>
-          <linearGradient
-            id="wizardGradient"
-            x1="150"
-            y1="140"
-            x2="380"
-            y2="390"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#FFFFFF" />
-            <stop offset="1" stopColor="#D0D0D0" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <BrandMark size={26} />
       <span>Forge</span>
     </div>
   )
