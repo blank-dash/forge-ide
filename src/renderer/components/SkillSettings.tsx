@@ -119,9 +119,15 @@ export default function SkillSettings({ disabled, onChange }: Props) {
 
       <h4>Add your own</h4>
       <p className="hint">
+        The {skills.filter((entry) => entry.source === 'builtin').length} skills above are built
+        into the app, not files — that is why the folders below start empty. Anything you put in
+        them appears here alongside the bundled ones, and a file with the same name replaces a
+        built-in.
+      </p>
+      <p className="hint">
         A skill is a markdown file with <code>name</code>, <code>description</code> and{' '}
-        <code>category</code> in its front matter. Project skills live in the workspace and travel
-        with the repository; global ones follow you between projects.
+        <code>category</code> in its front matter, then the instructions. Project skills live in
+        the workspace and travel with the repository; global ones follow you between projects.
       </p>
       <div className="row">
         <button className="btn" onClick={() => void window.forge.skills.openFolder('global')}>

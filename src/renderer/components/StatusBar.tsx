@@ -19,6 +19,14 @@ export default function StatusBar() {
 
   return (
     <div className="statusbar">
+      <button
+        className="status-settings"
+        onClick={() => patchUi({ settingsOpen: true })}
+        title="Settings (Ctrl+,)"
+      >
+        ⚙
+      </button>
+
       <button onClick={() => patchUi({ sidePanel: 'explorer' })}>{bootstrap?.workspaceName}</button>
 
       {git?.isRepo && (

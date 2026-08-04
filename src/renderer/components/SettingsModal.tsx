@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { EditApproval, ProviderConfig, Settings } from '@shared/types'
+import type { ProviderConfig, Settings } from '@shared/types'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import McpSettings from './McpSettings'
 import ProviderEditor from './ProviderEditor'
+import Select from './Select'
 import SkillSettings from './SkillSettings'
 
 const SECTIONS = [
@@ -199,32 +200,26 @@ export default function SettingsModal() {
                 <div className="row">
                   <div className="field">
                     <label>Edits</label>
-                    <select
-                      className="select"
+                    <Select
                       value={draft.editApproval}
-                      onChange={(event) =>
-                        patch({ editApproval: event.target.value as EditApproval })
-                      }
-                    >
-                      <option value="review">Apply, then review</option>
-                      <option value="ask">Ask before each edit</option>
-                      <option value="auto">Apply silently</option>
-                    </select>
+                      onChange={(editApproval) => patch({ editApproval })}
+                      options={[
+                        { value: 'review', label: t('review changes') },
+                        { value: 'ask', label: t('ask each edit') },
+                        { value: 'auto', label: t('apply silently') }
+                      ]}
+                    />
                   </div>
                   <div className="field">
                     <label>Shell commands</label>
-                    <select
-                      className="select"
+                    <Select
                       value={draft.commandApproval}
-                      onChange={(event) =>
-                        patch({
-                          commandApproval: event.target.value as Settings['commandApproval']
-                        })
-                      }
-                    >
-                      <option value="ask">Ask every time</option>
-                      <option value="auto">Run without asking</option>
-                    </select>
+                      onChange={(commandApproval) => patch({ commandApproval })}
+                      options={[
+                        { value: 'ask', label: t('commands: ask') },
+                        { value: 'auto', label: t('commands: auto') }
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -261,18 +256,18 @@ export default function SettingsModal() {
 
                 <div className="field">
                   <label>Working style</label>
-                  <select
-                    className="select"
+                  <Select
                     value={draft.stance}
-                    onChange={(event) => patch({ stance: event.target.value as Settings['stance'] })}
-                  >
-                    <option value="default">Default — get the job done</option>
-                    <option value="plan">Plan first — investigate, propose, wait</option>
-                    <option value="careful">Careful — small steps, verify each</option>
-                    <option value="fast">Fast — fewest steps to a working result</option>
-                    <option value="explain">Explain — narrate the reasoning</option>
-                    <option value="review">Review — report findings, change nothing</option>
-                  </select>
+                    onChange={(stance) => patch({ stance })}
+                    options={[
+                      { value: 'default', label: t('style: default'), hint: t('Get the job done') },
+                      { value: 'plan', label: t('style: plan'), hint: t('Investigate and propose, change nothing') },
+                      { value: 'careful', label: t('style: careful'), hint: t('Small steps, verify each one') },
+                      { value: 'fast', label: t('style: fast'), hint: t('Fewest steps to a working result') },
+                      { value: 'explain', label: t('style: explain'), hint: t('Narrate the reasoning as it goes') },
+                      { value: 'review', label: t('style: review'), hint: t('Report findings, change nothing') }
+                    ]}
+                  />
                   <div className="hint">
                     Same tools either way; this changes how the agent approaches the work. Plan
                     and Review will not edit even when edits are allowed.
@@ -305,19 +300,17 @@ export default function SettingsModal() {
                   </div>
                   <div className="field">
                     <label>Reasoning effort</label>
-                    <select
-                      className="select"
+                    <Select
                       value={draft.effort}
-                      onChange={(event) =>
-                        patch({ effort: event.target.value as Settings['effort'] })
-                      }
-                    >
-                      <option value="off">Off — answer directly</option>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="max">Max — think as long as it needs</option>
-                    </select>
+                      onChange={(effort) => patch({ effort })}
+                      options={[
+                        { value: 'off', label: 'Off', hint: 'Answer directly' },
+                        { value: 'low', label: 'Low' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'high', label: 'High' },
+                        { value: 'max', label: 'Max', hint: 'Think as long as it needs' }
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -368,19 +361,11 @@ export default function SettingsModal() {
 
                 <div className="field">
                   <label>{t('Language')}</label>
-                  <select
-                    className="select"
+                  <Select
                     value={draft.language}
-                    onChange={(event) =>
-                      patch({ language: event.target.value as Settings['language'] })
-                    }
-                  >
-                    {LANGUAGES.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(language) => patch({ language })}
+                    options={LANGUAGES.map((o) => ({ value: o.id, label: o.label }))}
+                  />
                   <div className="hint">
                     Changes the interface only. The agent answers in whatever language you write
                     to it in.
@@ -390,17 +375,18 @@ export default function SettingsModal() {
                 <div className="row">
                   <div className="field">
                     <label>{t('Theme')}</label>
-                    <select
-                      className="select"
+                    <Select
                       value={draft.theme}
-                      onChange={(event) => patch({ theme: event.target.value as Settings['theme'] })}
-                    >
-                      <option value="warm-dark">Warm dark</option>
-                      <option value="true-black">True black — OLED</option>
-                      <option value="high-contrast">High contrast</option>
-                      <option value="midnight">Midnight blue</option>
-                      <option value="light">Light</option>
-                    </select>
+                      onChange={(theme) => patch({ theme })}
+                      options={[
+                        { value: 'warm-dark', label: 'Warm dark' },
+                        { value: 'dash', label: 'Dash', hint: 'DashConnect teal, with particles' },
+                        { value: 'true-black', label: 'True black', hint: 'For OLED panels' },
+                        { value: 'high-contrast', label: 'High contrast' },
+                        { value: 'midnight', label: 'Midnight blue' },
+                        { value: 'light', label: 'Light' }
+                      ]}
+                    />
                   </div>
                   <div className="field narrow">
                     <label>Accent</label>

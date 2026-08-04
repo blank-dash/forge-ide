@@ -6,6 +6,7 @@ type Step = 'welcome' | 'model' | 'folder' | 'done'
 
 const THEMES: Array<{ id: Settings['theme']; label: string }> = [
   { id: 'warm-dark', label: 'Warm dark' },
+  { id: 'dash', label: 'Dash' },
   { id: 'true-black', label: 'True black' },
   { id: 'high-contrast', label: 'High contrast' },
   { id: 'midnight', label: 'Midnight' },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { EditApproval, Settings } from '@shared/types'
+import type { Settings } from '@shared/types'
 import {
   composeMessage,
   isImage,
@@ -11,11 +11,13 @@ import {
   tooLarge,
   type Attachment
 } from '../attachments'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import AttachmentStrip from './AttachmentStrip'
 import ContextMeter from './ContextMeter'
 import EffortPicker from './EffortPicker'
 import ModelPicker from './ModelPicker'
+import Select from './Select'
 
 interface SlashCommand {
   name: string
@@ -24,6 +26,7 @@ interface SlashCommand {
 }
 
 export default function Composer() {
+  const t = useT()
   const [value, setValue] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [menuIndex, setMenuIndex] = useState(0)
@@ -429,10 +432,10 @@ export default function Composer() {
           value={value}
           placeholder={
             dragging
-              ? 'Drop files here'
+              ? t('Drop files here')
               : running
-                ? 'Add to what it is doing — sent at the next step. Esc to interrupt.'
-                : 'Ask, or describe a change — / commands, @ files, paste images'
+                ? t('Add to what it is doing — sent at the next step. Esc to interrupt.')
+                : t('Ask, or describe a change — / commands, @ files, paste images')
           }
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={onKeyDown}
@@ -483,7 +486,7 @@ export default function Composer() {
               : 'The agent can edit files and run commands. Click for read-only.'
           }
         >
-          {settings.readOnly ? 'read-only' : 'can edit'}
+          {settings.readOnly ? t('read-only') : t('can edit')}
         </button>
 
         {!settings.readOnly && settings.bypassPermissions && (
@@ -492,38 +495,53 @@ export default function Composer() {
             onClick={() => void saveSettings({ bypassPermissions: false })}
             title="Everything runs without asking. Click to start asking again."
           >
-            bypassing permissions
+            {t('bypassing permissions')}
           </button>
         )}
 
         {!settings.readOnly && !settings.bypassPermissions && (
           <>
-            <select
-              className="mini-select"
+            <Select
+              size="mini"
+              title={t('How edits are approved')}
               value={settings.editApproval}
-              onChange={(event) =>
-                void saveSettings({ editApproval: event.target.value as EditApproval })
-              }
-              title="How edits are approved"
-            >
-              <option value="review">review changes</option>
-              <option value="ask">ask each edit</option>
-              <option value="auto">apply silently</option>
-            </select>
+              onChange={(editApproval) => void saveSettings({ editApproval })}
+              options={[
+                { value: 'review', label: t('review changes'), hint: t('Apply, then keep or revert per file') },
+                { value: 'ask', label: t('ask each edit'), hint: t('A dialog with the diff every time') },
+                { value: 'auto', label: t('apply silently'), hint: t('No prompt, no review screen') }
+              ]}
+            />
 
-            <button
-              className={`pill ${settings.commandApproval === 'auto' ? 'danger' : ''}`}
-              onClick={() =>
-                void saveSettings({
-                  commandApproval: settings.commandApproval === 'auto' ? 'ask' : 'auto'
-                })
-              }
-              title="Whether shell commands need approval"
-            >
-              {settings.commandApproval === 'auto' ? 'commands: auto' : 'commands: ask'}
-            </button>
+            <Select
+              size="mini"
+              title={t('Whether shell commands need approval')}
+              value={settings.commandApproval}
+              onChange={(commandApproval) => void saveSettings({ commandApproval })}
+              options={[
+                { value: 'ask', label: t('commands: ask') },
+                { value: 'auto', label: t('commands: auto'), hint: t('Runs anything without asking') }
+              ]}
+            />
           </>
         )}
+
+        {/* Working style lives here rather than buried in settings — it is a
+            per-task choice, not a preference you set once. */}
+        <Select
+          size="mini"
+          title={t('Working style')}
+          value={settings.stance}
+          onChange={(stance) => void saveSettings({ stance })}
+          options={[
+            { value: 'default', label: t('style: default'), hint: t('Get the job done') },
+            { value: 'plan', label: t('style: plan'), hint: t('Investigate and propose, change nothing') },
+            { value: 'careful', label: t('style: careful'), hint: t('Small steps, verify each one') },
+            { value: 'fast', label: t('style: fast'), hint: t('Fewest steps to a working result') },
+            { value: 'explain', label: t('style: explain'), hint: t('Narrate the reasoning as it goes') },
+            { value: 'review', label: t('style: review'), hint: t('Report findings, change nothing') }
+          ]}
+        />
 
         {changeCount > 0 && (
           <button
@@ -535,7 +553,7 @@ export default function Composer() {
             }
             title="Open the review screen"
           >
-            {changeCount} to review
+            {changeCount} {t('to review')}
           </button>
         )}
 
@@ -545,7 +563,7 @@ export default function Composer() {
 
         {running && (
           <button className="stop-btn" onClick={() => void window.forge.agent.abort()}>
-            ■ stop
+            {t('■ stop')}
           </button>
         )}
       </div>

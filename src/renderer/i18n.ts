@@ -139,6 +139,37 @@ const RU: Record<string, string> = {
   'working': 'работает',
   unsaved: 'не сохранено',
 
+
+  /* Agent behaviour + composer styles */
+  'Defaults for every model. Individual models can override them.':
+    'Значения по умолчанию для всех моделей. Отдельные модели могут их переопределить.',
+  'How edits are approved': 'Как подтверждаются правки',
+  'Whether shell commands need approval': 'Нужно ли подтверждать команды',
+  'Apply, then keep or revert per file': 'Применить, затем принять или откатить по файлам',
+  'A dialog with the diff every time': 'Диалог с диффом каждый раз',
+  'No prompt, no review screen': 'Без запроса и без экрана проверки',
+  'Runs anything without asking': 'Выполняет всё без запроса',
+  'style: default': 'стиль: обычный',
+  'style: plan': 'стиль: план',
+  'style: careful': 'стиль: аккуратно',
+  'style: fast': 'стиль: быстро',
+  'style: explain': 'стиль: с пояснениями',
+  'style: review': 'стиль: разбор',
+  'Get the job done': 'Просто сделать работу',
+  'Investigate and propose, change nothing': 'Изучить и предложить, ничего не менять',
+  'Small steps, verify each one': 'Мелкими шагами, проверяя каждый',
+  'Fewest steps to a working result': 'Кратчайший путь к результату',
+  'Narrate the reasoning as it goes': 'Объяснять ход мысли',
+  'Report findings, change nothing': 'Отчитаться о находках, ничего не менять',
+  'Show the model’s thinking in the transcript': 'Показывать размышления модели',
+  'Save conversations so they can be reopened later': 'Сохранять диалоги для повторного открытия',
+  'Fonts and colours for the editor and the agent panel.':
+    'Шрифты и цвета редактора и панели агента.',
+  'Open global folder': 'Открыть общую папку',
+  'Open project folder': 'Открыть папку проекта',
+  'Add your own': 'Добавить свои',
+  Reload: 'Обновить',
+
   /* Wizard */
   'Welcome to Forge': 'Добро пожаловать в Forge',
   Continue: 'Далее',

@@ -205,7 +205,13 @@ export type EditApproval = 'review' | 'ask' | 'auto'
 
 export type CommandApproval = 'ask' | 'auto'
 
-export type ThemeName = 'warm-dark' | 'true-black' | 'high-contrast' | 'midnight' | 'light'
+export type ThemeName =
+  | 'warm-dark'
+  | 'dash'
+  | 'true-black'
+  | 'high-contrast'
+  | 'midnight'
+  | 'light'
 
 /**
  * How the agent should approach the work. Each becomes a block of instruction
