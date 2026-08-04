@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EditApproval, ProviderConfig, Settings } from '@shared/types'
+import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import McpSettings from './McpSettings'
 import ProviderEditor from './ProviderEditor'
@@ -16,6 +17,7 @@ const SECTIONS = [
 ] as const
 
 export default function SettingsModal() {
+  const t = useT()
   const stored = useStore((state) => state.settings)
   const section = useStore((state) => state.ui.settingsSection)
   const patchUi = useStore((state) => state.patchUi)
@@ -94,11 +96,11 @@ export default function SettingsModal() {
               className={section === entry.id ? 'active' : ''}
               onClick={() => patchUi({ settingsSection: entry.id })}
             >
-              {entry.label}
+              {t(entry.label)}
             </button>
           ))}
           <span style={{ flex: 1 }} />
-          <button onClick={close}>Close</button>
+          <button onClick={close}>{t('Close')}</button>
         </nav>
 
         <div className="settings-main">
@@ -364,9 +366,30 @@ export default function SettingsModal() {
                 <h3>Appearance</h3>
                 <p>Fonts and colours for the editor and the agent panel.</p>
 
+                <div className="field">
+                  <label>{t('Language')}</label>
+                  <select
+                    className="select"
+                    value={draft.language}
+                    onChange={(event) =>
+                      patch({ language: event.target.value as Settings['language'] })
+                    }
+                  >
+                    {LANGUAGES.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="hint">
+                    Changes the interface only. The agent answers in whatever language you write
+                    to it in.
+                  </div>
+                </div>
+
                 <div className="row">
                   <div className="field">
-                    <label>Theme</label>
+                    <label>{t('Theme')}</label>
                     <select
                       className="select"
                       value={draft.theme}
@@ -503,13 +526,13 @@ export default function SettingsModal() {
               onClick={() => void save()}
               disabled={!dirty || saving}
             >
-              {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
+              {saving ? 'Saving…' : dirty ? t('Save changes') : t('Saved')}
             </button>
             <button className="btn" onClick={() => setDraft(stored)} disabled={!dirty}>
               Revert
             </button>
             {error && <span style={{ color: 'var(--red)', fontSize: 12 }}>{error}</span>}
-            <span className="kbd-hint">Ctrl+S save · Esc close</span>
+            <span className="kbd-hint">{t('Ctrl+S save · Esc close')}</span>
           </div>
         </div>
       </div>

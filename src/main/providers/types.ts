@@ -1,4 +1,10 @@
-import type { Message, ModelConfig, ProviderConfig, ReasoningEffort } from '@shared/types'
+import type {
+  Message,
+  ModelConfig,
+  ProviderConfig,
+  RateLimit,
+  ReasoningEffort
+} from '@shared/types'
 
 export interface ToolSchema {
   name: string
@@ -33,8 +39,51 @@ export type ProviderEvent =
       output: number
       cacheRead?: number
       cacheWrite?: number
+      /** Thinking tokens, when the provider reports them apart from output. */
+      reasoning?: number
     }
+  | { type: 'limits'; limit: Omit<RateLimit, 'providerId' | 'updatedAt'> }
   | { type: 'stop'; reason: string }
+
+/**
+ * Rate-limit headers, which are the one place providers do tell you how much
+ * you have left. Anthropic and OpenAI-compatible endpoints use different
+ * names for the same idea; Gemini sends none.
+ */
+export function readRateLimit(headers: Headers): Omit<RateLimit, 'providerId' | 'updatedAt'> | null {
+  const num = (...names: string[]): number | undefined => {
+    for (const name of names) {
+      const raw = headers.get(name)
+      if (raw !== null && raw !== '') {
+        const value = Number(raw)
+        if (Number.isFinite(value)) return value
+      }
+    }
+    return undefined
+  }
+
+  const tokensRemaining = num(
+    'anthropic-ratelimit-tokens-remaining',
+    'anthropic-ratelimit-input-tokens-remaining',
+    'x-ratelimit-remaining-tokens'
+  )
+  const tokensLimit = num(
+    'anthropic-ratelimit-tokens-limit',
+    'anthropic-ratelimit-input-tokens-limit',
+    'x-ratelimit-limit-tokens'
+  )
+  const requestsRemaining = num(
+    'anthropic-ratelimit-requests-remaining',
+    'x-ratelimit-remaining-requests'
+  )
+  const resetsAt =
+    headers.get('anthropic-ratelimit-tokens-reset') ??
+    headers.get('x-ratelimit-reset-tokens') ??
+    undefined
+
+  if (tokensRemaining === undefined && requestsRemaining === undefined) return null
+  return { tokensRemaining, tokensLimit, requestsRemaining, resetsAt: resetsAt ?? undefined }
+}
 
 export interface ProviderAdapter {
   kind: ProviderConfig['kind']

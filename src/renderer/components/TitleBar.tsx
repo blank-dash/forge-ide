@@ -1,6 +1,8 @@
 import { useStore } from '../store'
+import { useT } from '../i18n'
 
 export default function TitleBar() {
+  const t = useT()
   const bootstrap = useStore((state) => state.bootstrap)
   const mode = useStore((state) => state.settings.mode)
   const saveSettings = useStore((state) => state.saveSettings)
@@ -35,7 +37,7 @@ export default function TitleBar() {
           onClick={() => void saveSettings({ mode: 'chat' })}
           title="Give the whole window to the conversation, with history down the side. Same tools as Edit."
         >
-          Chat
+          {t('Chat')}
         </button>
         <button
           role="tab"
@@ -44,7 +46,7 @@ export default function TitleBar() {
           onClick={() => void saveSettings({ mode: 'agent' })}
           title="Editor, file tree and agent side by side, with a terminal below."
         >
-          Edit
+          {t('Edit')}
         </button>
       </div>
 
@@ -52,7 +54,7 @@ export default function TitleBar() {
 
       {mode === 'agent' && changeCount > 0 && (
         <button className="pill warn" onClick={() => patchUi({ mainView: 'review' })}>
-          {changeCount} to review
+          {changeCount} {t('to review')}
         </button>
       )}
 
@@ -62,7 +64,7 @@ export default function TitleBar() {
           onClick={() => patchUi({ terminalOpen: !terminalOpen })}
           title="Toggle terminal (Ctrl+`)"
         >
-          Terminal
+          {t('Terminal')}
         </button>
       )}
 
@@ -71,7 +73,7 @@ export default function TitleBar() {
         onClick={() => patchUi({ settingsOpen: true })}
         title="Settings (Ctrl+,)"
       >
-        Settings
+        {t('Settings')}
       </button>
     </div>
   )

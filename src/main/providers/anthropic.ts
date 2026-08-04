@@ -2,6 +2,7 @@ import type { ContentBlock, Message } from '@shared/types'
 import { readSse, safeParse } from './sse'
 import {
   applyExtraBody,
+  readRateLimit,
   type CompletionRequest,
   type ProviderAdapter,
   type ProviderEvent,
@@ -60,6 +61,9 @@ export const anthropicAdapter: ProviderAdapter = {
     })
 
     if (!res.ok || !res.body) throw await toProviderError(res, provider.name)
+
+    const limit = readRateLimit(res.headers)
+    if (limit) yield { type: 'limits', limit }
 
     // tool_use inputs arrive as a stream of partial JSON fragments keyed by
     // content block index; buffer them until content_block_stop.

@@ -75,7 +75,8 @@ export const googleAdapter: ProviderAdapter = {
           output:
             (chunk.usageMetadata.candidatesTokenCount ?? 0) +
             (chunk.usageMetadata.thoughtsTokenCount ?? 0),
-          cacheRead: chunk.usageMetadata.cachedContentTokenCount ?? 0
+          cacheRead: chunk.usageMetadata.cachedContentTokenCount ?? 0,
+          reasoning: chunk.usageMetadata.thoughtsTokenCount ?? 0
         }
       }
 

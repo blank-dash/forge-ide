@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { detectsThinking, detectsVision } from '@shared/types'
 import type { ModelConfig, ProviderConfig, ProviderTestResult } from '@shared/types'
 
 type Props = {
@@ -448,15 +449,20 @@ function JsonField({ value, placeholder, onChange }: JsonFieldProps) {
   )
 }
 
+/**
+ * Capabilities are inferred from the id so a model added by hand behaves
+ * correctly straight away. Every guess stays editable on the row below.
+ */
 function blankModel(id: string): ModelConfig {
+  const thinking = detectsThinking(id)
   return {
     id,
     label: id,
     contextWindow: 128_000,
-    maxOutputTokens: 8_192,
+    maxOutputTokens: thinking ? 32_000 : 8_192,
     supportsTools: true,
-    supportsVision: false,
-    supportsThinking: false
+    supportsVision: detectsVision(id),
+    supportsThinking: thinking
   }
 }
 

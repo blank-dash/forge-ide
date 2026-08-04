@@ -119,7 +119,52 @@ export interface TokenUsage {
   output: number
   cacheRead: number
   cacheWrite: number
+  /** Thinking tokens, where the provider reports them separately. */
+  reasoning: number
   costUsd: number
+}
+
+/** What a provider's rate-limit headers said on the last response. */
+export interface RateLimit {
+  providerId: string
+  tokensRemaining?: number
+  tokensLimit?: number
+  requestsRemaining?: number
+  /** ISO timestamp when the token bucket refills. */
+  resetsAt?: string
+  updatedAt: number
+}
+
+/**
+ * Reasoning models, recognised from their id.
+ *
+ * Without this, a model added by hand or pulled in with "Fetch list" arrives
+ * with thinking switched off, the effort control does nothing, and the feature
+ * looks broken. The list errs towards recognising too much: sending a thinking
+ * budget to a model that ignores it is harmless, while missing one silently
+ * disables the feature.
+ */
+export function detectsThinking(modelId: string): boolean {
+  const id = modelId.toLowerCase()
+  return (
+    /(^|\/)o[1-9](-|$)/.test(id) ||
+    /gpt-5/.test(id) ||
+    /claude-(opus|sonnet)-4/.test(id) ||
+    /claude-3-7/.test(id) ||
+    /gemini-2\.5/.test(id) ||
+    /deepseek-(r1|reasoner)/.test(id) ||
+    /qwq|qwen3/.test(id) ||
+    /magistral|reasoning|thinking|-think/.test(id) ||
+    /grok-(3|4).*(mini|reasoning)/.test(id)
+  )
+}
+
+export function detectsVision(modelId: string): boolean {
+  const id = modelId.toLowerCase()
+  if (/embed|whisper|tts|moderation|rerank/.test(id)) return false
+  return (
+    /gpt-4|gpt-5|o[1-9](-|$)|claude|gemini|llava|pixtral|vision|qwen2?\.?5?-?vl/.test(id)
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -332,6 +377,8 @@ export type AgentEvent =
   | { type: 'idle' }
   /** A message was typed mid-turn and is waiting for the next boundary. */
   | { type: 'queued'; text: string; pending: number }
+  /** What the provider's rate-limit headers reported on the last response. */
+  | { type: 'limits'; limit: RateLimit }
   | {
       type: 'context'
       /** Tokens the next request would carry. */
@@ -374,6 +421,8 @@ export interface Settings {
   mcpServers: McpServerConfig[]
   /** Ids of skills hidden from the model. */
   disabledSkills: string[]
+  /** Interface language. Model replies follow whatever the user writes in. */
+  language: 'en' | 'ru'
   theme: ThemeName
   accent: string
   editorFontSize: number

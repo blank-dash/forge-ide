@@ -3,8 +3,10 @@ import { useStore } from '../store'
 import ChatMessage from './ChatMessage'
 import Composer from './Composer'
 import { syncSessionId } from './ConversationList'
+import { useT } from '../i18n'
 
 export default function ChatPanel() {
+  const t = useT()
   const entries = useStore((state) => state.entries)
   const errors = useStore((state) => state.errors)
   const notices = useStore((state) => state.notices)
@@ -33,25 +35,25 @@ export default function ChatPanel() {
   return (
     <>
       <div className="pane-header">
-        Agent
+        {t('Agent')}
         <span style={{ flex: 1 }} />
         <button
           className="icon-btn"
-          title="Saved conversations"
+          title={t('Saved conversations')}
           onClick={() => patchUi({ sidePanel: 'sessions', sidebarWidth: 260 })}
         >
           history
         </button>
         <button
           className="icon-btn"
-          title="New conversation"
+          title={t('New conversation')}
           onClick={async () => {
             await window.forge.agent.reset()
             useStore.getState().clearChat()
             await syncSessionId()
           }}
         >
-          + new
+          {t('+ new')}
         </button>
       </div>
 

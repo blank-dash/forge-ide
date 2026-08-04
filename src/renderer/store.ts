@@ -130,7 +130,14 @@ interface State {
   requestSave(): void
 }
 
-const EMPTY_USAGE: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 }
+const EMPTY_USAGE: TokenUsage = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  reasoning: 0,
+  costUsd: 0
+}
 const MAX_NOTICES = 4
 
 export const useStore = create<State>((set, get) => ({
@@ -480,6 +487,7 @@ function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
     output: a.output + b.output,
     cacheRead: a.cacheRead + b.cacheRead,
     cacheWrite: a.cacheWrite + b.cacheWrite,
+    reasoning: a.reasoning + b.reasoning,
     costUsd: a.costUsd + b.costUsd
   }
 }

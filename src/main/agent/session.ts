@@ -238,7 +238,7 @@ export class AgentSession {
       const messageId = randomUUID()
       const blocks: ContentBlock[] = []
       const toolUses: ToolUseBlock[] = []
-      const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+      const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
       let stopReason = 'stop'
       let text = ''
       let thinking = ''
@@ -298,6 +298,17 @@ export class AgentSession {
               usage.output = Math.max(usage.output, event.output)
               usage.cacheRead = Math.max(usage.cacheRead, event.cacheRead ?? 0)
               usage.cacheWrite = Math.max(usage.cacheWrite, event.cacheWrite ?? 0)
+              usage.reasoning = Math.max(usage.reasoning, event.reasoning ?? 0)
+              break
+            case 'limits':
+              this.deps.emit({
+                type: 'limits',
+                limit: {
+                  ...event.limit,
+                  providerId: resolved.provider.id,
+                  updatedAt: Date.now()
+                }
+              })
               break
             case 'stop':
               stopReason = event.reason
@@ -588,7 +599,7 @@ function errorResult(toolUseId: string, message: string): ToolResultBlock {
 }
 
 function emptyUsage(): TokenUsage {
-  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 }
+  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, costUsd: 0 }
 }
 
 function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
@@ -597,6 +608,7 @@ function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
     output: a.output + b.output,
     cacheRead: a.cacheRead + b.cacheRead,
     cacheWrite: a.cacheWrite + b.cacheWrite,
+    reasoning: a.reasoning + b.reasoning,
     costUsd: a.costUsd + b.costUsd
   }
 }

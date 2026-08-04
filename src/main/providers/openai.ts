@@ -2,6 +2,7 @@ import type { Message, ReasoningEffort } from '@shared/types'
 import { readSse, safeParse } from './sse'
 import {
   applyExtraBody,
+  readRateLimit,
   type CompletionRequest,
   type ProviderAdapter,
   type ProviderEvent,
@@ -70,6 +71,9 @@ export const openaiAdapter: ProviderAdapter = {
 
     if (!res.ok || !res.body) throw await toProviderError(res, provider.name)
 
+    const rateLimit = readRateLimit(res.headers)
+    if (rateLimit) yield { type: 'limits', limit: rateLimit }
+
     const calls = new Map<number, { id: string; name: string; args: string }>()
     let stopReason = 'stop'
 
@@ -85,7 +89,10 @@ export const openaiAdapter: ProviderAdapter = {
           type: 'usage',
           input: chunk.usage.prompt_tokens ?? 0,
           output: chunk.usage.completion_tokens ?? 0,
-          cacheRead: chunk.usage.prompt_tokens_details?.cached_tokens ?? 0
+          cacheRead: chunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
+          // The only evidence effort did anything: OpenAI hides the reasoning
+          // text but does report how much of it there was.
+          reasoning: chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0
         }
       }
 
@@ -232,6 +239,7 @@ interface OpenAiChunk {
     prompt_tokens?: number
     completion_tokens?: number
     prompt_tokens_details?: { cached_tokens?: number }
+    completion_tokens_details?: { reasoning_tokens?: number }
   }
   error?: { message?: string }
 }

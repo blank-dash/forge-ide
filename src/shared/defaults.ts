@@ -125,6 +125,7 @@ export const DEFAULT_SETTINGS: Settings = {
   externalRoots: [],
   mcpServers: [],
   disabledSkills: [],
+  language: 'en',
   theme: 'warm-dark',
   accent: '#d97757',
   editorFontSize: 13,

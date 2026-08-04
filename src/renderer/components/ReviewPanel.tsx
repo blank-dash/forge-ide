@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import DiffView from './DiffView'
+import { useT } from '../i18n'
 
 /**
  * The Cursor-style review screen: every file the agent touched since the last
  * accept, each with its own diff and its own accept/revert.
  */
 export default function ReviewPanel() {
+  const t = useT()
   const changes = useStore((state) => state.changes)
   const setChanges = useStore((state) => state.setChanges)
   const pushError = useStore((state) => state.pushError)
@@ -43,12 +45,12 @@ export default function ReviewPanel() {
   if (changes.length === 0) {
     return (
       <div className="pane editor-pane">
-        <div className="pane-header">Review</div>
+        <div className="pane-header">{t('Review')}</div>
         <div className="welcome">
-          <h2>Nothing to review</h2>
-          <p>Changes the agent makes in review mode collect here.</p>
+          <h2>{t('Nothing to review')}</h2>
+          <p>{t('Changes the agent makes in review mode collect here.')}</p>
           <button className="btn" onClick={() => patchUi({ mainView: 'editor' })}>
-            Back to the editor
+            {t('Back to the editor')}
           </button>
         </div>
       </div>
@@ -58,7 +60,7 @@ export default function ReviewPanel() {
   return (
     <div className="pane editor-pane">
       <div className="pane-header">
-        Review
+        {t('Review')}
         <span className="review-count">
           {changes.length} file{changes.length === 1 ? '' : 's'} ·{' '}
           <span className="add">+{totals.added}</span> <span className="del">-{totals.removed}</span>
@@ -69,14 +71,14 @@ export default function ReviewPanel() {
           disabled={busy !== null}
           onClick={() => void run('all', () => window.forge.changes.acceptAll())}
         >
-          Keep all
+          {t('Keep all')}
         </button>
         <button
           className="btn btn-danger"
           disabled={busy !== null}
           onClick={() => void run('all', () => window.forge.changes.rejectAll())}
         >
-          Revert all
+          {t('Revert all')}
         </button>
       </div>
 
@@ -125,14 +127,14 @@ export default function ReviewPanel() {
                   disabled={busy !== null}
                   onClick={() => void run(change.id, () => window.forge.changes.accept(change.id))}
                 >
-                  Keep
+                  {t('Keep')}
                 </button>
                 <button
                   className="btn btn-danger"
                   disabled={busy !== null}
                   onClick={() => void run(change.id, () => window.forge.changes.reject(change.id))}
                 >
-                  Revert
+                  {t('Revert')}
                 </button>
               </div>
 

@@ -1,3 +1,4 @@
+import { detectsThinking, detectsVision } from '@shared/types'
 import type {
   ModelConfig,
   ModelRef,
@@ -55,14 +56,15 @@ export function resolveModel(settings: Settings, ref: ModelRef): ResolvedModel {
 
 /** Lets users type any model id even if it is not in the saved catalogue. */
 function syntheticModel(id: string): ModelConfig {
+  const thinking = detectsThinking(id)
   return {
     id,
     label: id,
     contextWindow: 128_000,
-    maxOutputTokens: 8_192,
+    maxOutputTokens: thinking ? 32_000 : 8_192,
     supportsTools: true,
-    supportsVision: false,
-    supportsThinking: false
+    supportsVision: detectsVision(id),
+    supportsThinking: thinking
   }
 }
 
