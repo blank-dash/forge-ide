@@ -20,13 +20,13 @@ Grab your platform's build from
 
 | Platform | File |
 | --- | --- |
-| Windows 10/11 (Intel/AMD) | `Forge-<version>-x64-setup.exe` |
-| Windows on ARM | `Forge-<version>-arm64-setup.exe` |
+| **Windows — any machine** | **`Forge-<version>-setup.exe`** — one installer for Intel/AMD and ARM, picks the right build itself |
+| Windows, smaller download | `Forge-<version>-x64-setup.exe` or `-arm64-setup.exe` |
 | Windows, no install | `Forge-<version>-x64-portable.exe` — runs from anywhere, including a USB stick |
 | macOS (Apple silicon) | `Forge-<version>-arm64.dmg` |
 | macOS (Intel) | `Forge-<version>-x64.dmg` |
-| Linux, any distro | `Forge-<version>-x86_64.AppImage` — `chmod +x` and run |
-| Debian / Ubuntu | `Forge-<version>-amd64.deb` |
+| Linux, any distro | `Forge-<version>-x86_64.AppImage` (or `-arm64`) — `chmod +x` and run |
+| Debian / Ubuntu | `Forge-<version>-amd64.deb` or `-arm64.deb` |
 | Fedora / RHEL | `Forge-<version>-x86_64.rpm` |
 
 **The builds are not code-signed**, so the OS will warn you the first time:
