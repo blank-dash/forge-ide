@@ -36,8 +36,11 @@ export interface SessionDeps {
   settings(): Settings
   saveSettings(next: Settings): void
   emit(event: AgentEvent): void
-  /** Shows the permission dialog and resolves with the user's choice. */
-  askUser(request: PermissionRequest): Promise<PermissionDecision>
+  /**
+   * Shows the permission dialog and resolves with the user's choice, or with a
+   * denial if the turn is interrupted while the dialog is still open.
+   */
+  askUser(request: PermissionRequest, signal: AbortSignal): Promise<PermissionDecision>
   mcpTools(): ToolDef<Record<string, never>>[]
   gitContext(): Promise<string>
   persist(record: SessionRecord): void
@@ -127,7 +130,7 @@ export class AgentSession {
 
         const settings = this.deps.settings()
         const resolved = resolveModel(settings, settings.activeModel)
-        const tools = activeTools(this.deps.mcpTools(), settings.mode === 'chat')
+        const tools = activeTools(this.deps.mcpTools(), settings.readOnly)
 
         const system = await buildSystemPrompt({
           cwd: this.deps.cwd(),
@@ -271,12 +274,24 @@ export class AgentSession {
         }
       } catch (error) {
         if (signal.aborted) {
-          this.finishTurn(messageId, resolved, blocks, thinking, text, toolUses, usage, 'aborted')
+          // Tool calls the model asked for never ran, and an assistant turn
+          // carrying tool_use without a matching tool_result is rejected by
+          // every provider on the next request — it would break the whole
+          // conversation. Drop them and let the UI resolve their spinners.
+          for (const use of toolUses) {
+            const stopped = errorResult(use.id, 'Interrupted before this tool ran.')
+            this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result: stopped })
+          }
+          this.finishTurn(messageId, resolved, blocks, thinking, text, [], usage, 'aborted')
           return null
         }
 
         const retryable = !emitted && attempt < MAX_ATTEMPTS && isRetryable(error)
         if (!retryable) throw error
+
+        // Nothing was streamed, so the turn this attempt announced has no
+        // content and must not be left behind as an empty bubble.
+        this.deps.emit({ type: 'turn_abandoned', messageId })
 
         const delay = 800 * 2 ** (attempt - 1)
         this.deps.emit({
@@ -381,7 +396,7 @@ export class AgentSession {
 
     const ctx: ToolContext = {
       cwd: this.deps.cwd(),
-      mode: settings.mode,
+      readOnly: settings.readOnly,
       editApproval: settings.editApproval,
       externalRoots: settings.externalRoots,
       sessionGrants: [...this.grants],
@@ -389,7 +404,7 @@ export class AgentSession {
       changes: this.changes,
       notifyFileChanged: (absolutePath) =>
         this.deps.emit({ type: 'file_changed', path: absolutePath }),
-      requestPermission: (request) => this.requestPermission(request)
+      requestPermission: (request) => this.requestPermission(request, signal)
     }
 
     try {
@@ -408,11 +423,12 @@ export class AgentSession {
   }
 
   private async requestPermission(
-    request: Omit<PermissionRequest, 'id'>
+    request: Omit<PermissionRequest, 'id'>,
+    signal: AbortSignal
   ): Promise<boolean> {
     const settings = this.deps.settings()
     const verdict = evaluatePermission({
-      mode: settings.mode,
+      readOnly: settings.readOnly,
       editApproval: settings.editApproval,
       commandApproval: settings.commandApproval,
       allowRules: settings.allowRules,
@@ -424,13 +440,15 @@ export class AgentSession {
     if (verdict === 'allow') return true
     if (verdict === 'deny') {
       throw new ToolError(
-        settings.mode === 'chat'
-          ? 'Chat mode is read-only — you cannot change files or run commands. Describe what you would do instead.'
+        settings.readOnly
+          ? 'Read-only is on — you cannot change files or run commands. Describe what you would do instead.'
           : 'This action is blocked by a deny rule.'
       )
     }
 
-    const decision = await this.deps.askUser({ ...request, id: randomUUID() })
+    if (signal.aborted) throw new ToolError('Interrupted by the user.')
+
+    const decision = await this.deps.askUser({ ...request, id: randomUUID() }, signal)
 
     if (decision.action === 'allow_always') {
       this.remember(request)

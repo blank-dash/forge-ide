@@ -90,6 +90,13 @@ function createWindow(): void {
 
   mainWindow.webContents.on('did-finish-load', () => console.log('[renderer] loaded'))
 
+  // A reload throws away every terminal component without unmounting it, so
+  // the shells behind them would pile up as orphaned processes.
+  mainWindow.webContents.on('did-start-navigation', (event) => {
+    if (event.isSameDocument) return
+    services?.terminals.killAll()
+  })
+
   // A renderer crash is recoverable — reload instead of leaving a blank window.
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[renderer gone]', details.reason)

@@ -277,10 +277,20 @@ export const useStore = create<State>((set, get) => ({
         }))
         break
 
+      case 'turn_abandoned':
+        set((state) => ({
+          entries: state.entries.filter((entry) => entry.id !== event.messageId)
+        }))
+        break
+
       case 'idle':
         set((state) => ({
           running: false,
-          entries: state.entries.map((entry) => ({ ...entry, streaming: false }))
+          permission: null,
+          // A turn that produced nothing leaves an empty bubble behind.
+          entries: state.entries
+            .filter((entry) => entry.role === 'user' || entry.blocks.length > 0)
+            .map((entry) => ({ ...entry, streaming: false }))
         }))
         break
 

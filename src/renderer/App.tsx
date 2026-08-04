@@ -54,6 +54,10 @@ export default function App() {
       window.forge.agent.onPermissionRequest((request) =>
         useStore.getState().setPermission(request)
       ),
+      window.forge.agent.onPermissionCancelled((id) => {
+        const current = useStore.getState().permission
+        if (current?.id === id) useStore.getState().setPermission(null)
+      }),
       window.forge.settings.onChanged((next) => useStore.getState().setSettings(next)),
       window.forge.mcp.onStatus((statuses) => useStore.getState().setMcp(statuses))
     ]

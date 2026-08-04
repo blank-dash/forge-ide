@@ -1,7 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import os from 'node:os'
 import type { WebContents } from 'electron'
 
 export type TerminalBackend = 'pty' | 'pipe'
@@ -215,8 +214,4 @@ function shellArgs(shell: string): string[] {
 function pipeArgs(shell: string): string[] {
   if (/pwsh|powershell/i.test(shell)) return ['-NoProfile', '-NoLogo', '-Command', '-']
   return ['-s']
-}
-
-export function homeDir(): string {
-  return os.homedir()
 }

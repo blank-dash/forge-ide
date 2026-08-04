@@ -13,7 +13,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/smoke.mjs --external:electron --alias:@shared=./src/shared --log-level=warning && node out/smoke.mjs",
+    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/smoke.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/smoke.mjs",
     "icons": "electron scripts/make-icons.cjs",
     "package": "electron-vite build && electron-builder --dir",
     "dist": "electron-vite build && electron-builder --publish never",

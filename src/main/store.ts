@@ -73,10 +73,6 @@ export class SettingsStore {
     return this.cache
   }
 
-  patch(partial: Partial<Settings>): Settings {
-    return this.set({ ...this.cache, ...partial })
-  }
-
   /** The exact bytes on disk, for the export button. */
   serialize(): string {
     return JSON.stringify(this.encrypted(), null, 2)
@@ -161,7 +157,7 @@ function migrateModes(input: Partial<Settings> & LegacySettings): Partial<Settin
 
   switch (input.permissionMode) {
     case 'plan':
-      return { ...input, mode: 'chat', editApproval: 'review', commandApproval: 'ask' }
+      return { ...input, mode: 'chat', readOnly: true, editApproval: 'review', commandApproval: 'ask' }
     case 'default':
       return { ...input, mode: 'agent', editApproval: 'ask', commandApproval: 'ask' }
     case 'acceptEdits':

@@ -16,7 +16,7 @@ import { McpManager } from './mcp/manager'
 import { getAdapter, testProvider } from './providers'
 import { SessionStore } from './sessions'
 import { SettingsStore } from './store'
-import { TerminalManager } from './terminal'
+import { shellLabel as terminalShellLabel, TerminalManager } from './terminal'
 import { Updater } from './updater'
 import { Workspace } from './workspace'
 
@@ -67,14 +67,31 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       send('settings:changed', settings.get())
     },
     emit,
-    askUser: (request) =>
+    askUser: (request, signal) =>
       new Promise<PermissionDecision>((resolve) => {
         const window = getWindow()
         if (!window || window.isDestroyed()) {
           resolve({ action: 'deny', reason: 'No window available.' })
           return
         }
-        pendingPermissions.set(request.id, resolve)
+
+        const settle = (decision: PermissionDecision): void => {
+          if (!pendingPermissions.has(request.id)) return
+          pendingPermissions.delete(request.id)
+          signal.removeEventListener('abort', onAbort)
+          resolve(decision)
+        }
+
+        // Without this, stopping a turn while the dialog is open leaves the
+        // tool awaiting an answer that can never come — the loop never reaches
+        // its `finally`, and the session stays "running" until a restart.
+        const onAbort = (): void => {
+          send('permission:cancel', request.id)
+          settle({ action: 'deny', reason: 'Interrupted by the user.' })
+        }
+
+        pendingPermissions.set(request.id, settle)
+        signal.addEventListener('abort', onAbort, { once: true })
         window.webContents.send('permission:request', request)
       }),
     mcpTools: () => mcp.tools(),
@@ -155,7 +172,10 @@ function registerHandlers(
       keysEncrypted: settings.keysEncrypted,
       settingsPath: settings.file,
       platform: process.platform,
+      // The agent's run_command shell and the terminal's shell are chosen
+      // independently and often differ, so reporting one as "the" shell misleads.
       shellLabel: shellInfo().label,
+      terminalShell: terminalShellLabel(),
       gitAvailable: await git.isAvailable(),
       appVersion: app.getVersion(),
       updates: updater.current()
@@ -307,10 +327,8 @@ function registerHandlers(
 
   ipcMain.removeAllListeners('permission:respond')
   ipcMain.on('permission:respond', (_event, payload: { id: string; decision: PermissionDecision }) => {
-    const resolve = pendingPermissions.get(payload?.id)
-    if (!resolve) return
-    pendingPermissions.delete(payload.id)
-    resolve(payload.decision)
+    // `settle` removes itself from the map and detaches its abort listener.
+    pendingPermissions.get(payload?.id)?.(payload.decision)
   })
 
   /* ---------------- pending changes ---------------- */

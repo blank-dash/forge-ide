@@ -131,17 +131,18 @@ function ChatWelcome() {
 
   return (
     <div className="chat-welcome">
-      <h1>What are we looking at?</h1>
+      <h1>What are we working on?</h1>
       <p>
-        Ask about <strong>{workspaceName}</strong> — the agent can read and search the code, but in
-        Chat mode it cannot change anything.
+        Ask about <strong>{workspaceName}</strong>. The agent has every tool here that it has in
+        Edit view — reading, searching, editing, running commands. This view just gives the
+        conversation the whole window.
       </p>
       <p className="chat-welcome-hint">
-        Type <code>/</code> for commands, <code>@</code> to reference a file, or paste an absolute
-        path to point at anything on this machine.
+        Type <code>/</code> for commands, <code>@</code> to reference a file, paste a screenshot or
+        an absolute path to point at anything on this machine.
       </p>
       <button className="btn" onClick={() => void saveSettings({ mode: 'agent' })}>
-        Switch to Edit mode
+        Open the editor instead
       </button>
     </div>
   )

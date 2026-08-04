@@ -87,14 +87,18 @@ API keys live in the app's user-data directory, encrypted with the OS keychain
 
 ## Chat and Edit
 
-The switch sits in the title bar, or `Ctrl+1` / `Ctrl+2`.
+The switch sits in the title bar, or `Ctrl+1` / `Ctrl+2`. **These are layouts,
+not permission levels** — the agent has exactly the same tools in both.
 
 **Chat** — the whole window is the conversation, with history down the left,
-grouped by day and searchable. Read-only: mutating tools are not even offered to
-the model, so it cannot change anything whatever it decides to do.
+grouped by day and searchable.
 
 **Edit** — file tree, editor and agent panel side by side, with a terminal below.
-How much the agent asks is a separate setting:
+
+Whether the agent may change anything is a separate switch, because wanting a
+bigger conversation view and wanting to hold the agent back are unrelated
+wishes. **Read-only** withholds every mutating tool from the model — a hard
+boundary no allow rule can unlock. Otherwise, how much it asks is set by:
 
 | Edits | Behaviour |
 | --- | --- |
@@ -270,6 +274,17 @@ The things that break long agent sessions, and what Forge does about them:
   position on a monitor you unplugged is discarded rather than opening off-screen.
 - **Editor and tree stay live** — files the agent creates or rewrites refresh in
   the tree and in open tabs, but never over your own unsaved edits.
+- **Interrupting is safe** — stopping a turn mid-stream drops the tool calls the
+  model had asked for, because an assistant turn holding `tool_use` with no
+  matching `tool_result` is rejected by every provider on the next request and
+  would break the conversation permanently. Stopping while a permission dialog
+  is open withdraws it rather than leaving the turn waiting on an answer that
+  can never come.
+- **Paths are checked after resolving symlinks**, so a link inside the workspace
+  cannot be used to reach outside it without the usual prompt.
+
+Each of these has a regression test in `scripts/session-tests.ts`, driven
+through a stubbed `fetch` so the real provider adapter runs end to end.
 
 ## Layout
 
@@ -307,7 +322,7 @@ in the adapter map — nothing else in the app knows the difference.
 
 ```bash
 npm run typecheck
-npm run smoke       # 32 tests over diff, permissions, context, changes, paths, SSE
+npm run smoke       # 50 tests: pure logic plus agent-loop integration
 npm run icons       # regenerate PNGs from build/icon.svg
 npm run build       # bundle to out/
 npm run dist        # build installers into release/ without publishing

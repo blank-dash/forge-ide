@@ -1,16 +1,12 @@
+import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type {
-  EditApproval,
-  InteractionMode,
-  PermissionRequest,
-  ToolDisplay
-} from '@shared/types'
+import type { EditApproval, PermissionRequest, ToolDisplay } from '@shared/types'
 import type { ChangeTracker } from '../changes'
 
 export interface ToolContext {
   /** Absolute workspace root. Relative paths resolve against it. */
   cwd: string
-  mode: InteractionMode
+  readOnly: boolean
   editApproval: EditApproval
   /** Directories outside the workspace the user has already approved. */
   externalRoots: string[]
@@ -66,10 +62,14 @@ export async function resolveTarget(
     ? path.normalize(target)
     : path.resolve(ctx.cwd, target)
 
-  if (isInside(ctx.cwd, absolute)) return absolute
+  // Compare real paths, not textual ones: a symlink inside the workspace can
+  // point anywhere, and a purely lexical check would wave it straight through.
+  const real = await realPath(absolute)
+  const realCwd = await realPath(ctx.cwd)
+  if (isInside(realCwd, real)) return absolute
 
-  if (ctx.externalRoots.some((root) => isInside(root, absolute))) return absolute
-  if (ctx.sessionGrants.some((granted) => isInside(granted, absolute))) return absolute
+  if (ctx.externalRoots.some((root) => isInside(root, real))) return absolute
+  if (ctx.sessionGrants.some((granted) => isInside(granted, real))) return absolute
 
   const parent = path.dirname(absolute)
   const approved = await ctx.requestPermission({
@@ -89,6 +89,28 @@ export async function resolveTarget(
     )
   }
   return absolute
+}
+
+/**
+ * Resolves symlinks as far as the path actually exists. A file being created
+ * has no real path yet, so we resolve the nearest existing ancestor and
+ * re-attach the remainder — enough to catch a symlinked parent directory.
+ */
+async function realPath(target: string): Promise<string> {
+  let head = target
+  const tail: string[] = []
+
+  for (let depth = 0; depth < 64; depth++) {
+    try {
+      return path.join(await fs.realpath(head), ...tail.reverse())
+    } catch {
+      const parent = path.dirname(head)
+      if (parent === head) return target
+      tail.push(path.basename(head))
+      head = parent
+    }
+  }
+  return target
 }
 
 export function isInside(root: string, candidate: string): boolean {

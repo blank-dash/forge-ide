@@ -101,7 +101,7 @@ export default function ChatPanel() {
 function EmptyState() {
   const patchUi = useStore((state) => state.patchUi)
   const providers = useStore((state) => state.settings.providers)
-  const mode = useStore((state) => state.settings.mode)
+  const readOnly = useStore((state) => state.settings.readOnly)
   const configured = providers.some((provider) => provider.enabled && provider.apiKey)
 
   if (!configured) {
@@ -125,22 +125,21 @@ function EmptyState() {
 
   return (
     <div className="empty-hint" style={{ lineHeight: 1.75 }}>
-      {mode === 'chat' ? (
+      {readOnly ? (
         <>
-          <strong style={{ color: 'var(--fg-1)' }}>Chat mode.</strong> The agent can read and
-          search but not change anything. Switch to <strong>Edit</strong> below when you want it to
-          work.
+          <strong style={{ color: 'var(--fg-1)' }}>Read-only.</strong> The agent can read and
+          search but not change anything. Turn it off below when you want it to work.
         </>
       ) : (
         <>
-          <strong style={{ color: 'var(--fg-1)' }}>Edit mode.</strong> Describe a change and the
-          agent will make it. Changes land in the review screen so you can keep or revert each file.
+          Describe a change and the agent will make it. Changes land in the review screen so you
+          can keep or revert each file.
         </>
       )}
       <br />
       <br />
-      Type <code>/</code> for commands, <code>@</code> to reference a file. Paste an absolute path
-      and the agent can work on files anywhere on this machine — you approve each new location.
+      Type <code>/</code> for commands, <code>@</code> to reference a file. Paste a screenshot, a
+      file, or an absolute path to point the agent at anything on this machine.
     </div>
   )
 }

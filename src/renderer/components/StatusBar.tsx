@@ -62,8 +62,11 @@ export default function StatusBar() {
         </span>
       )}
 
-      <button onClick={() => patchUi({ settingsOpen: true, settingsSection: 'permissions' })}>
-        {settings.mode === 'chat' ? 'chat' : `edit · ${settings.editApproval}`}
+      <button
+        onClick={() => patchUi({ settingsOpen: true, settingsSection: 'permissions' })}
+        style={settings.readOnly ? { color: 'var(--yellow)' } : undefined}
+      >
+        {settings.readOnly ? 'read-only' : `edits: ${settings.editApproval}`}
       </button>
 
       <button onClick={() => patchUi({ settingsOpen: true, settingsSection: 'providers' })}>

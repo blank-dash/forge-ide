@@ -71,7 +71,10 @@ export interface Bootstrap {
   keysEncrypted: boolean
   settingsPath: string
   platform: string
+  /** Shell the agent's run_command tool uses. */
   shellLabel: string
+  /** Shell the terminal panel spawns, which is chosen separately. */
+  terminalShell: string
   gitAvailable: boolean
   appVersion: string
   updates: UpdateStatus
@@ -135,6 +138,9 @@ const api = {
     onEvent: (handler: (event: AgentEvent) => void) => subscribe('agent:event', handler),
     onPermissionRequest: (handler: (request: PermissionRequest) => void) =>
       subscribe('permission:request', handler),
+    /** Fires when a pending prompt is withdrawn, e.g. the turn was stopped. */
+    onPermissionCancelled: (handler: (id: string) => void) =>
+      subscribe('permission:cancel', handler),
     respondPermission: (id: string, decision: PermissionDecision) =>
       ipcRenderer.send('permission:respond', { id, decision })
   },

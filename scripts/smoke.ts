@@ -16,6 +16,7 @@ import { findMentionedPaths } from '../src/main/agent/paths'
 import { evaluatePermission, matchesRule, ruleTarget } from '../src/main/agent/permissions'
 import { readSse } from '../src/main/providers/sse'
 import { composeMessage, isLargePaste, tooLarge } from '../src/renderer/attachments'
+import { runSessionTests } from './session-tests'
 
 let passed = 0
 let failed = 0
@@ -92,7 +93,7 @@ const perm = (
   }
 ): ReturnType<typeof evaluatePermission> =>
   evaluatePermission({
-    mode: 'agent',
+    readOnly: false,
     editApproval: 'ask',
     commandApproval: 'ask',
     allowRules: [],
@@ -150,10 +151,10 @@ test('deny beats every other setting', () => {
   )
 })
 
-test('chat mode refuses edits even with an allow rule', () => {
+test('read-only refuses edits even with an allow rule', () => {
   assert.equal(
     perm({
-      mode: 'chat',
+      readOnly: true,
       editApproval: 'auto',
       allowRules: ['Edit(**)'],
       request: req('edit', 'edit_file', 'src/app.ts')
@@ -162,9 +163,16 @@ test('chat mode refuses edits even with an allow rule', () => {
   )
 })
 
-test('chat mode still lets the user approve an outside path', () => {
+test('read-only refuses shell commands even on auto', () => {
   assert.equal(
-    perm({ mode: 'chat', request: req('external', 'external_path', 'C:/notes/todo.md') }),
+    perm({ readOnly: true, commandApproval: 'auto', request: req('shell', 'run_command', 'ls') }),
+    'deny'
+  )
+})
+
+test('read-only still lets the user approve an outside path', () => {
+  assert.equal(
+    perm({ readOnly: true, request: req('external', 'external_path', 'C:/notes/todo.md') }),
     'ask'
   )
 })
@@ -585,6 +593,27 @@ test('joins multi-line data fields', async () => {
   for await (const frame of readSse(streamOf(['data: line1\ndata: line2\n\n']))) seen.push(frame)
   assert.deepEqual(seen, [{ event: 'message', data: 'line1\nline2' }])
 })
+
+/* ------------------------------------------------------------------ */
+
+console.log('agent session')
+
+/**
+ * These stub the global `fetch`, so they cannot overlap — the parallel `test`
+ * helper would let each one clobber the previous stub.
+ */
+async function serialTest(name: string, fn: () => Promise<void> | void): Promise<void> {
+  try {
+    await fn()
+    passed++
+    console.log(`  ok  ${name}`)
+  } catch (error) {
+    failed++
+    console.error(`  FAIL ${name}\n       ${(error as Error).message}`)
+  }
+}
+
+await runSessionTests(serialTest)
 
 /* ------------------------------------------------------------------ */
 

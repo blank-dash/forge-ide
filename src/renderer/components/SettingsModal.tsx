@@ -150,24 +150,24 @@ export default function SettingsModal() {
               <>
                 <h3>Permissions</h3>
                 <p>
-                  Chat mode is a hard read-only boundary — no rule can unlock it. In Edit mode the
-                  settings below decide how much you get asked.
+                  Chat and Edit are layouts, not permission levels — the agent has exactly the same
+                  tools in both. What it is allowed to do is set here.
                 </p>
 
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={draft.readOnly}
+                    onChange={(event) => patch({ readOnly: event.target.checked })}
+                  />
+                  Read-only — mutating tools are not offered to the model at all
+                </label>
+                <div className="hint" style={{ marginBottom: 16 }}>
+                  A hard boundary: no allow rule can unlock it. Reading a file outside the
+                  workspace still prompts, because that stays your call.
+                </div>
+
                 <div className="row">
-                  <div className="field">
-                    <label>Mode</label>
-                    <select
-                      className="select"
-                      value={draft.mode}
-                      onChange={(event) =>
-                        patch({ mode: event.target.value as Settings['mode'] })
-                      }
-                    >
-                      <option value="chat">Chat — read-only</option>
-                      <option value="agent">Edit — the agent can change files</option>
-                    </select>
-                  </div>
                   <div className="field">
                     <label>Edits</label>
                     <select
@@ -438,7 +438,8 @@ export default function SettingsModal() {
                 <div className="field">
                   <label>Environment</label>
                   <div className="hint">
-                    {bootstrap?.shellLabel} on {bootstrap?.platform} ·{' '}
+                    {bootstrap?.platform} · agent shell {bootstrap?.shellLabel} · terminal{' '}
+                    {bootstrap?.terminalShell} ·{' '}
                     {bootstrap?.gitAvailable ? 'git found' : 'git not found'}
                   </div>
                 </div>

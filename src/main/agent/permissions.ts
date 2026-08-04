@@ -1,9 +1,4 @@
-import type {
-  CommandApproval,
-  EditApproval,
-  InteractionMode,
-  PermissionRequest
-} from '@shared/types'
+import type { CommandApproval, EditApproval, PermissionRequest } from '@shared/types'
 
 /** Rule namespace shown to the user, e.g. `Bash(npm test *)`. */
 const NAMESPACE_BY_TOOL: Record<string, string> = {
@@ -20,7 +15,7 @@ const NAMESPACE_BY_TOOL: Record<string, string> = {
 export type Verdict = 'allow' | 'deny' | 'ask'
 
 export interface PermissionInput {
-  mode: InteractionMode
+  readOnly: boolean
   editApproval: EditApproval
   commandApproval: CommandApproval
   allowRules: string[]
@@ -31,13 +26,14 @@ export interface PermissionInput {
 }
 
 export function evaluatePermission(input: PermissionInput): Verdict {
-  const { mode, request, target } = input
+  const { request, target } = input
 
   // Deny rules are absolute and are checked before anything else.
   if (matchesAny(input.denyRules, request.toolName, target)) return 'deny'
 
-  // Chat mode is a hard read-only boundary; no rule can unlock a mutation.
-  if (mode === 'chat' && request.kind !== 'external') return 'deny'
+  // Read-only is a hard boundary; no allow rule can unlock a mutation. Reading
+  // a file outside the workspace is still the user's call to make, though.
+  if (input.readOnly && request.kind !== 'external') return 'deny'
 
   switch (request.kind) {
     case 'external':
@@ -131,8 +127,4 @@ export function ruleTarget(request: Omit<PermissionRequest, 'id'>): string {
   if (request.kind === 'shell') return request.detail.split('\n')[0]
   if (request.kind === 'mcp') return request.title
   return request.title.replace(/^(Edit|Create|Overwrite|Delete)\s+/, '')
-}
-
-export function describeMode(mode: InteractionMode): string {
-  return mode === 'chat' ? 'chat · read-only' : 'agent · can edit'
 }

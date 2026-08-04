@@ -33,7 +33,7 @@ export default function TitleBar() {
           aria-selected={mode === 'chat'}
           className={mode === 'chat' ? 'active' : ''}
           onClick={() => void saveSettings({ mode: 'chat' })}
-          title="Full-window conversation. Read-only — the agent can look but not touch."
+          title="Give the whole window to the conversation, with history down the side. Same tools as Edit."
         >
           Chat
         </button>
@@ -42,7 +42,7 @@ export default function TitleBar() {
           aria-selected={mode === 'agent'}
           className={mode === 'agent' ? 'active' : ''}
           onClick={() => void saveSettings({ mode: 'agent' })}
-          title="Editor plus agent. The agent edits files and runs commands."
+          title="Editor, file tree and agent side by side, with a terminal below."
         >
           Edit
         </button>

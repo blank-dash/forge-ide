@@ -158,13 +158,23 @@ export default function Composer() {
       { name: '/model', description: 'Switch the active model', run: () => setPickerOpen(true) },
       {
         name: '/chat',
-        description: 'Read-only mode — investigate and explain, no edits',
+        description: 'Full-window conversation view',
         run: () => void saveSettings({ mode: 'chat' })
       },
       {
-        name: '/agent',
-        description: 'Let the agent edit files and run commands',
+        name: '/edit',
+        description: 'Editor and agent side by side',
         run: () => void saveSettings({ mode: 'agent' })
+      },
+      {
+        name: '/readonly',
+        description: 'Let the agent look but not touch',
+        run: () => void saveSettings({ readOnly: true })
+      },
+      {
+        name: '/unlock',
+        description: 'Allow the agent to edit and run commands again',
+        run: () => void saveSettings({ readOnly: false })
       },
       {
         name: '/review',
@@ -456,7 +466,19 @@ export default function Composer() {
           )}
         </div>
 
-        {settings.mode === 'agent' && (
+        <button
+          className={`pill ${settings.readOnly ? 'warn' : ''}`}
+          onClick={() => void saveSettings({ readOnly: !settings.readOnly })}
+          title={
+            settings.readOnly
+              ? 'Read-only: mutating tools are not offered to the model at all. Click to allow changes.'
+              : 'The agent can edit files and run commands. Click for read-only.'
+          }
+        >
+          {settings.readOnly ? 'read-only' : 'can edit'}
+        </button>
+
+        {!settings.readOnly && (
           <>
             <select
               className="mini-select"
@@ -485,8 +507,16 @@ export default function Composer() {
           </>
         )}
 
-        {changeCount > 0 && settings.mode === 'agent' && (
-          <button className="pill warn" onClick={() => patchUi({ mainView: 'review' })}>
+        {changeCount > 0 && (
+          <button
+            className="pill warn"
+            onClick={() =>
+              settings.mode === 'agent'
+                ? patchUi({ mainView: 'review' })
+                : void saveSettings({ mode: 'agent' }).then(() => patchUi({ mainView: 'review' }))
+            }
+            title="Open the review screen"
+          >
             {changeCount} to review
           </button>
         )}

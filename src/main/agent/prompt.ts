@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { EditApproval, InteractionMode, Settings } from '@shared/types'
+import type { EditApproval, Settings } from '@shared/types'
 import { buildProjectSnapshot, shellInfo } from './tools'
 
 /** Project-level instruction files we pick up automatically, in priority order. */
@@ -42,8 +42,11 @@ export async function buildSystemPrompt(ctx: PromptContext): Promise<string> {
 - Workspace root: ${ctx.cwd}
 - Platform: ${process.platform}
 - Shell for run_command: ${shellInfo().label}
-- Mode: ${describeMode(settings.mode)}
-${settings.mode === 'agent' ? `- Edit approval: ${describeEditApproval(settings.editApproval)}` : ''}`,
+${
+  settings.readOnly
+    ? '- Read-only is on: you may look but not change anything.'
+    : `- Edit approval: ${describeEditApproval(settings.editApproval)}`
+}`,
 
     `## Files outside the workspace
 The user can point you at any path on this machine. Absolute paths work in every file tool — just
@@ -76,9 +79,9 @@ Available: ${ctx.mcpTools.join(', ')}`
     )
   }
 
-  if (settings.mode === 'chat') {
+  if (settings.readOnly) {
     sections.push(
-      `## Chat mode is active
+      `## Read-only is on
 You have read-only tools only. Investigate the code and answer, or lay out a concrete plan: the
 files you would change, what each change does, and the order to do it in. Do not claim to have
 made any change — you cannot.`
@@ -108,12 +111,6 @@ async function readProjectDocs(cwd: string): Promise<string> {
     if (content) return `### ${name}\n${content.slice(0, 20_000)}`
   }
   return ''
-}
-
-function describeMode(mode: InteractionMode): string {
-  return mode === 'chat'
-    ? 'chat — read-only, no edits or commands'
-    : 'agent — you may edit files and run commands'
 }
 
 function describeEditApproval(approval: EditApproval): string {

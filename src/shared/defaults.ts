@@ -115,6 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
   providers: BUILTIN_PROVIDERS,
   activeModel: 'anthropic:claude-sonnet-4-5',
   mode: 'agent',
+  readOnly: false,
   editApproval: 'review',
   commandApproval: 'ask',
   allowRules: [],

@@ -141,8 +141,13 @@ export interface ToolDisplay {
 /* ------------------------------------------------------------------ */
 
 /**
- * Chat is read-only — the model is not even offered mutating tools.
- * Agent lets it change the workspace, governed by the approval settings below.
+ * Which layout the window uses. Purely visual — the agent has exactly the same
+ * tools either way. `chat` gives the whole window to the conversation with
+ * history down the side; `agent` is the editor, file tree and agent panel.
+ *
+ * Whether the agent may change anything is `readOnly`, deliberately separate:
+ * wanting a bigger conversation view and wanting to hold the agent back are
+ * unrelated wishes, and tying them together made one impossible without the other.
  */
 export type InteractionMode = 'chat' | 'agent'
 
@@ -299,6 +304,8 @@ export type AgentEvent =
   | { type: 'tool_start'; messageId: string; block: ToolUseBlock }
   | { type: 'tool_end'; messageId: string; toolUseId: string; result: ToolResultBlock }
   | { type: 'turn_end'; messageId: string; usage: TokenUsage; stopReason: string }
+  /** A turn announced but never delivered — a retried request. Drop it. */
+  | { type: 'turn_abandoned'; messageId: string }
   | { type: 'idle' }
   | {
       type: 'context'
@@ -323,6 +330,8 @@ export interface Settings {
   providers: ProviderConfig[]
   activeModel: ModelRef
   mode: InteractionMode
+  /** Hard read-only: mutating tools are not offered to the model at all. */
+  readOnly: boolean
   editApproval: EditApproval
   commandApproval: CommandApproval
   /** Persisted "always allow" rules, e.g. "Bash(git status *)". */
