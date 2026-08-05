@@ -1,6 +1,6 @@
 {
   "name": "forge-ide",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Forge dash — agentic IDE",
   "main": "./out/main/index.js",
   "author": {
