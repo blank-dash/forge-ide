@@ -597,15 +597,15 @@ ${composerInsert.text}` : composerInsert.text
             title={
               reasoning
                 ? 'How hard the model thinks before answering.'
-                : `${describeModel(settings)} is not marked as a reasoning model, so effort does nothing. Tick "thinking" for it in Settings → Providers.`
+                : `${describeModel(settings, sessionModel)} is not marked as a reasoning model, so effort does nothing. Tick "thinking" for it in Settings → Providers.`
             }
           >
             effort: {settings.effort} {reasoning ? '▴' : ''}
           </button>
           {effortOpen && (
             <EffortPicker
-              model={activeModel(settings).model}
-              kind={activeModel(settings).provider?.kind}
+              model={activeModel(settings, sessionModel).model}
+              kind={activeModel(settings, sessionModel).provider?.kind}
               onClose={() => setEffortOpen(false)}
             />
           )}
