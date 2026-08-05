@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LiveAction, LiveSource, LiveStatus } from '../../preload'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { Recorder, speak, stopSpeaking } from '../voice'
 
 /**
  * Live mode.
@@ -20,6 +21,16 @@ export default function LivePane() {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState('')
   const [actions, setActions] = useState<LiveAction[]>([])
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const recorder = useRef(new Recorder())
+  const voice = useStore((state) => state.settings.voice)
+  const sessionId = useStore((state) => state.sessionId)
+  const entries = useStore((state) => state.entries)
+  const running = useStore((state) => state.running)
+  const pushError = useStore((state) => state.pushError)
+  const patchUi = useStore((state) => state.patchUi)
+  const spokenReply = useRef<string | null>(null)
 
   const refreshSources = useCallback(async () => {
     try {
@@ -38,6 +49,23 @@ export default function LivePane() {
   useEffect(() => {
     return window.forge.live.onAction((action) => setActions((all) => [action, ...all].slice(0, 12)))
   }, [])
+
+  useEffect(() => {
+    if (!status?.active || status.sessionId !== sessionId || running || voice.speak === 'off') return
+    const reply = [...entries]
+      .reverse()
+      .find((entry) => entry.role === 'assistant' && !entry.streaming && entry.usage)
+    if (!reply) return
+
+    const text = reply.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join(' ').trim()
+    if (!text || spokenReply.current === reply.id) return
+    spokenReply.current = reply.id
+    void speak(text).catch((caught: Error) => pushError(caught.message))
+  }, [entries, running, sessionId, status?.active, status?.sessionId, voice.speak, pushError])
+
+  useEffect(() => {
+    if (!status?.active) spokenReply.current = null
+  }, [status?.active])
 
   // The preview is what makes this honest: while a session is running you can
   // see the same frames the agent is being given.
@@ -65,7 +93,7 @@ export default function LivePane() {
     setBusy(true)
     setError(null)
     try {
-      await window.forge.live.start(picked, access)
+      await window.forge.live.start(picked, access, sessionId ?? undefined)
       setActions([])
     } catch (caught) {
       setError((caught as Error).message)
@@ -74,7 +102,53 @@ export default function LivePane() {
     }
   }
 
+  useEffect(() => {
+    return () => recorder.current.cancel()
+  }, [])
+
+  const talk = useCallback(async (): Promise<void> => {
+    if (recording || transcribing) return
+    if (!voice.inputModel) {
+      pushError('No transcription model is chosen yet — pick one under Settings → Voice.')
+      return
+    }
+
+    stopSpeaking()
+    setError(null)
+    try {
+      await recorder.current.start(voice.inputDevice)
+      setRecording(true)
+    } catch (caught) {
+      setError((caught as Error).message)
+    }
+  }, [recording, transcribing, voice.inputModel, voice.inputDevice, pushError])
+
+  const finishTalking = useCallback(async (): Promise<void> => {
+    if (!recorder.current.active) return
+    setRecording(false)
+    setTranscribing(true)
+    try {
+      const audio = await recorder.current.stop()
+      if (!audio) return
+      const result = await window.forge.voice.transcribe(audio.data, audio.mediaType, voice.inputLanguage)
+      const text = result.text.trim()
+      if (!text) return
+
+      useStore.getState().pushUser(text)
+      await window.forge.agent.send(text, [], sessionId ?? undefined)
+    } catch (caught) {
+      const message = (caught as Error).message
+      setError(message)
+      pushError(message)
+    } finally {
+      setTranscribing(false)
+    }
+  }, [voice.inputLanguage, sessionId, pushError])
+
   const stop = async (): Promise<void> => {
+    recorder.current.cancel()
+    stopSpeaking()
+    setRecording(false)
     await window.forge.live.stop().catch(() => undefined)
   }
 
@@ -102,6 +176,34 @@ export default function LivePane() {
 
         {status.controlUnavailable && (
           <div className="live-warning">{status.controlUnavailable}</div>
+        )}
+
+        <section className="live-voice" aria-live="polite">
+          <div>
+            <h2>{t('Talk with the agent')}</h2>
+            <p>
+              {recording
+                ? t('Listening — tap again when you are done.')
+                : transcribing
+                  ? t('Transcribing your message…')
+                  : voice.inputModel
+                    ? t('Tap to talk. Your words are sent to the active conversation.')
+                    : t('Choose a transcription model under Settings → Voice to talk.')}
+            </p>
+          </div>
+          <button
+            className={`btn ${recording ? 'btn-danger' : 'btn-primary'}`}
+            disabled={transcribing}
+            onClick={() => void (recording ? finishTalking() : talk())}
+          >
+            {transcribing ? t('Transcribing…') : recording ? t('Send voice message') : t('Talk')}
+          </button>
+        </section>
+
+        {voice.speak === 'off' && (
+          <div className="live-warning">
+            {t('Replies are not being read aloud. Enable a computer voice under Settings → Voice.')}
+          </div>
         )}
 
         <div className="live-preview">
@@ -142,6 +244,23 @@ export default function LivePane() {
           </p>
         </div>
       </header>
+
+      <section className="live-voice">
+        <div>
+          <h2>{t('Voice conversation')}</h2>
+          <p>
+            {voice.inputModel
+              ? t('Start sharing, then talk to the agent with the button below.')
+              : t('Choose a transcription model under Settings → Voice before starting.')}
+          </p>
+        </div>
+        <button
+          className="btn"
+          onClick={() => patchUi({ settingsOpen: true, settingsSection: 'voice' })}
+        >
+          {t('Voice settings')}
+        </button>
+      </section>
 
       {error && <div className="field-error">{error}</div>}
 

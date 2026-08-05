@@ -139,6 +139,7 @@ interface State {
   patchUi(patch: Partial<UiState>): void
 
   pushUser(text: string, attachments?: Attachment[]): void
+  removeEntry(id: string): void
   applyEvent(event: AgentEvent, sessionId?: string): void
   pushError(message: string, detail?: string): void
   dismissError(id: string): void
@@ -277,6 +278,8 @@ export const useStore = create<State>((set, get) => ({
         }
       ]
     })),
+
+  removeEntry: (id) => set((state) => ({ entries: state.entries.filter((entry) => entry.id !== id) })),
 
   applyEvent: (event, sessionId) => {
     // An event for a conversation that is not on screen updates its stored

@@ -137,8 +137,8 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
    * that session's access level allows. An inactive live mode is therefore not
    * a permission the model can argue about — the capability is absent.
    */
-  const hostTools = (): Parameters<typeof activeTools>[0] =>
-    live.isActive
+  const hostTools = (sessionId?: string): Parameters<typeof activeTools>[0] =>
+    live.isActive && live.current().sessionId === sessionId
       ? ([
           ...browserTools,
           ...webTools,
@@ -151,7 +151,7 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       cwd: () => workspace.cwd,
       settings: () => settings.get(),
       skillTool: () => (skills.all(settings.get().disabledSkills).length > 0 ? useSkill : null),
-    hostTools: () => hostTools(),
+    hostTools: () => hostTools(currentId()),
     beforeWrite: (absolutePath) => checkpoints.capture(currentId(), absolutePath),
     turnBegan: () => checkpoints.begin(currentId()),
     turnEnded: (label) => {
@@ -644,9 +644,11 @@ function registerHandlers(
   handle('live:sources', () => live.sources())
   handle('live:status', async () => live.current())
 
-  handle('live:start', async (payload: { sourceId: string; access: LiveAccess }) =>
-    live.start(payload.sourceId, payload.access)
-  )
+  handle('live:start', async (payload: { sourceId: string; access: LiveAccess; sessionId?: string }) => {
+    const sessionId = payload.sessionId ?? manager.activeId
+    if (!manager.get(sessionId)) throw new Error('That conversation is no longer open.')
+    return live.start(payload.sourceId, payload.access, sessionId)
+  })
   handle('live:stop', async () => live.stop())
 
   /** A frame for the preview, so the user sees exactly what the agent sees. */

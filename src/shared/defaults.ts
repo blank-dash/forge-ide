@@ -56,6 +56,19 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     ]
   },
   {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    kind: 'openai',
+    baseUrl: 'https://api.deepseek.com/v1',
+    apiKey: '',
+    headers: {},
+    builtin: true,
+    enabled: true,
+    models: [
+      m('deepseek-chat', 'DeepSeek Chat', 128_000, 8_000),
+      m('deepseek-reasoner', 'DeepSeek Reasoner', 128_000, 8_000, undefined, { supportsThinking: true })
+    ]
+  },  {
     id: 'google',
     name: 'Google Gemini',
     kind: 'google',

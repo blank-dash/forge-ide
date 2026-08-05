@@ -17,6 +17,8 @@ export interface LiveStatus {
   /** Which screen or window is being shared. */
   sourceId: string
   sourceName: string
+  /** Conversation that owns this screen-sharing session. */
+  sessionId: string
   access: LiveAccess
   /** Set when control was asked for but the platform cannot provide it. */
   controlUnavailable?: string
@@ -35,6 +37,7 @@ const IDLE: LiveStatus = {
   active: false,
   sourceId: '',
   sourceName: '',
+  sessionId: '',
   access: 'watch',
   actions: 0,
   startedAt: 0
@@ -67,7 +70,7 @@ export class LiveSession {
     return this.status
   }
 
-  async start(sourceId: string, access: LiveAccess): Promise<LiveStatus> {
+  async start(sourceId: string, access: LiveAccess, sessionId = ''): Promise<LiveStatus> {
     const available = await listSources()
     const source = available.find((entry) => entry.id === sourceId)
     if (!source) throw new Error('That screen or window is no longer available.')
@@ -84,6 +87,7 @@ export class LiveSession {
       active: true,
       sourceId,
       sourceName: source.name,
+      sessionId,
       access,
       controlUnavailable,
       actions: 0,

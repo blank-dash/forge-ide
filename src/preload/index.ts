@@ -142,6 +142,7 @@ export interface LiveStatus {
   active: boolean
   sourceId: string
   sourceName: string
+  sessionId: string
   access: 'watch' | 'control'
   controlUnavailable?: string
   actions: number
@@ -294,8 +295,8 @@ const api = {
   live: {
     sources: () => call<LiveSource[]>('live:sources'),
     status: () => call<LiveStatus>('live:status'),
-    start: (sourceId: string, access: 'watch' | 'control') =>
-      call<LiveStatus>('live:start', { sourceId, access }),
+    start: (sourceId: string, access: 'watch' | 'control', sessionId?: string) =>
+      call<LiveStatus>('live:start', { sourceId, access, sessionId }),
     stop: () => call<LiveStatus>('live:stop'),
     /** One frame as a data URI, for the preview. */
     frame: () => call<string>('live:frame'),
