@@ -517,7 +517,13 @@ ${composerInsert.text}` : composerInsert.text
               ? t('Live mode is running — click to open it')
               : t('Share your screen with the agent')
           }
-          onClick={() => patchUi({ chatPane: 'live' })}
+          onClick={() => {
+            patchUi({ chatPane: 'live' })
+            const owner = useStore.getState().sessionId
+            if (owner) {
+              setTimeout(() => window.dispatchEvent(new CustomEvent('forge:live-start', { detail: owner })), 0)
+            }
+          }}
         >
           {live?.active && <span className="live-dot" />}
           {t('Live')}

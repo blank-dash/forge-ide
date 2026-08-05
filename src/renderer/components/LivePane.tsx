@@ -59,8 +59,20 @@ export default function LivePane() {
   }, [status?.active, refreshSources])
 
   useEffect(() => {
-    return window.forge.live.onAction((action) => setActions((all) => [action, ...all].slice(0, 12)))
-  }, [])
+    const onStart = (event: Event): void => {
+      const owner = (event as CustomEvent<string>).detail
+      if (owner === sessionId) setAutoStartRequested(true)
+    }
+    window.addEventListener('forge:live-start', onStart)
+    return () => window.removeEventListener('forge:live-start', onStart)
+  }, [sessionId])
+
+  useEffect(() => {
+    if (!autoStartRequested || autoShareStarted.current || status?.active || !picked) return
+    autoShareStarted.current = true
+    setAutoStartRequested(false)
+    void start()
+  }, [autoStartRequested, picked, status?.active])
 
   useEffect(() => {
     if (!status?.active || status.sessionId !== sessionId || running || voice.speak === 'off') return
@@ -350,13 +362,13 @@ export default function LivePane() {
         </div>
       </div>
 
-      {access === 'control' && (
-        <div className="live-warning">
-          {t(
-            'Control drives the real mouse and keyboard. It can click anything that is on screen, including things this app knows nothing about. Nothing starts on its own and closing the app ends it — but while it runs, watch it.'
-          )}
-        </div>
-      )}
+        {access === 'control' && (
+          <div className="live-warning">
+            {t(
+              'Control drives the real mouse and keyboard. It can click anything that is on screen, including things this app knows nothing about. Nothing starts on its own and closing the app ends it — but while it runs, watch it.'
+            )}
+          </div>
+        )}
 
       <div className="tasks-footer">
         <span style={{ flex: 1 }} />
