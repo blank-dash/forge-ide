@@ -33,6 +33,15 @@ function installCrashGuards(): void {
   process.on('unhandledRejection', (reason) => report('Unhandled rejection', reason))
 }
 
+/** The app mark, from wherever it lives in this build. */
+function appIcon(): string {
+  // Packaged, the resources directory sits beside the executable; from source
+  // it is the build folder the icons are generated into.
+  return app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(__dirname, '../../build/icon-512.png')
+}
+
 function createWindow(): void {
   const state = loadWindowState()
 
@@ -45,6 +54,9 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     backgroundColor: '#141413',
+    // Set explicitly: without it an unpackaged run shows Electron's own icon,
+    // and on Linux the window manager has nothing to display at all.
+    icon: appIcon(),
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay:
@@ -144,6 +156,20 @@ async function adoptArgvFolder(argv: string[]): Promise<void> {
  * Start Menu shortcut carries.
  */
 app.setAppUserModelId('dev.forge.ide')
+
+/*
+ * Pinned, so the display name can change without moving anyone's data.
+ *
+ * Electron picks the settings directory from the app's name, and every existing
+ * install has it at "forge-ide". Letting that follow a rename would strand every
+ * provider, API key, approved rule and saved conversation in a folder nothing
+ * looks at any more — with no error to say so, just an app that opens as if it
+ * had never been used.
+ *
+ * The folder name is not user-visible. The display name is free to change; this
+ * is not.
+ */
+app.setPath('userData', join(app.getPath('appData'), 'forge-ide'))
 
 // A build run from source gets its own profile. Without this it fights the
 // installed app for the single-instance lock — the source build just exits,

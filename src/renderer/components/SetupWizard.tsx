@@ -79,7 +79,7 @@ export default function SetupWizard() {
         <div className="wizard-body">
           {step === 'welcome' && (
             <>
-              <h2>Welcome to Forge</h2>
+              <h2>Welcome to Forge dash</h2>
               <p>
                 An IDE where the agent is a first-class part of the window, and the model is
                 whichever one you have a key for.
@@ -177,7 +177,7 @@ export default function SetupWizard() {
             <>
               <h2>Open a project</h2>
               <p>
-                Forge works inside one folder at a time. The agent can read and edit anything in
+                Forge dash works inside one folder at a time. The agent can read and edit anything in
                 it; anywhere else on the machine needs your approval first.
               </p>
 
@@ -250,7 +250,7 @@ function BrandBlock() {
   return (
     <div className="wizard-brand">
       <BrandMark size={26} />
-      <span>Forge</span>
+      <span>Forge dash</span>
     </div>
   )
 }

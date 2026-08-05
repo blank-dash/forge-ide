@@ -1,7 +1,7 @@
 {
   "name": "forge-ide",
-  "version": "0.5.1",
-  "description": "Agentic IDE with a Claude Code style interface and bring-your-own-model support",
+  "version": "0.5.2",
+  "description": "Forge dash — agentic IDE",
   "main": "./out/main/index.js",
   "author": {
     "name": "blank-dash",
@@ -50,7 +50,7 @@
   },
   "build": {
     "appId": "dev.forge.ide",
-    "productName": "Forge",
+    "productName": "Forge dash",
     "copyright": "Copyright © 2026 Forge",
     "directories": {
       "buildResources": "build",
@@ -74,7 +74,7 @@
     ],
     "win": {
       "icon": "build/icon.png",
-      "artifactName": "${productName}-${version}-${arch}-setup.${ext}",
+      "artifactName": "Forge-${version}-${arch}-setup.${ext}",
       "target": [
         {
           "target": "nsis",
@@ -92,7 +92,7 @@
       ]
     },
     "portable": {
-      "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
+      "artifactName": "Forge-${version}-${arch}-portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -107,7 +107,7 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "artifactName": "Forge-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "dmg",
@@ -129,7 +129,7 @@
       "icon": "build/icon.png",
       "category": "Development",
       "synopsis": "Agentic IDE with bring-your-own-model support",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "artifactName": "Forge-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "AppImage",
@@ -152,6 +152,12 @@
           ]
         }
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "build/icon-512.png",
+        "to": "icon.png"
+      }
+    ]
   }
 }

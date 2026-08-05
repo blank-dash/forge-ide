@@ -98,7 +98,7 @@ export async function captureFrame(sourceId: string, width = AGENT_WIDTH): Promi
   if (source.thumbnail.isEmpty()) {
     throw new Error(
       'The capture came back empty. On macOS this means screen recording permission has not ' +
-        'been granted to Forge in System Settings → Privacy & Security.'
+        'been granted to Forge dash in System Settings → Privacy & Security.'
     )
   }
 

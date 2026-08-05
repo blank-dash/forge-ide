@@ -431,7 +431,7 @@ function registerHandlers(
     if (!window) throw new Error('No window.')
 
     const result = await dialog.showSaveDialog(window, {
-      title: 'Export Forge settings',
+      title: 'Export Forge dash settings',
       defaultPath: `forge-settings-${new Date().toISOString().slice(0, 10)}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
@@ -448,7 +448,7 @@ function registerHandlers(
     if (!window) throw new Error('No window.')
 
     const result = await dialog.showOpenDialog(window, {
-      title: 'Import Forge settings',
+      title: 'Import Forge dash settings',
       properties: ['openFile'],
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
@@ -457,7 +457,7 @@ function registerHandlers(
     const raw = await readFile(result.filePaths[0], 'utf8')
     const parsed = JSON.parse(raw) as Settings
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.providers)) {
-      throw new Error('That file does not look like a Forge settings export.')
+      throw new Error('That file does not look like a Forge dash settings export.')
     }
 
     const saved = settings.set(parsed)

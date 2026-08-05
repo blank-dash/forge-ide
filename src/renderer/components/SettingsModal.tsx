@@ -488,7 +488,7 @@ export default function SettingsModal() {
 
             {section === 'about' && (
               <>
-                <h3>Forge {bootstrap?.appVersion}</h3>
+                <h3>Forge dash {bootstrap?.appVersion}</h3>
                 <p>An agentic IDE that works with whatever model you bring.</p>
 
                 <UpdatePanel />
@@ -663,7 +663,7 @@ function describeUpdate(
     case 'downloading':
       return `Downloading… ${status.percent ?? 0}%`
     case 'ready':
-      return `Version ${status.version} is ready. Forge will restart to install it.`
+      return `Version ${status.version} is ready. Forge dash will restart to install it.`
     case 'none':
       return 'You are on the latest release.'
     case 'error':

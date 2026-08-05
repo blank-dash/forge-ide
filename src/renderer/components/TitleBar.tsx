@@ -24,7 +24,7 @@ export default function TitleBar() {
     <div className="titlebar">
       <div className="brand">
         <BrandMark size={16} />
-        Forge
+        Forge dash
         {running && <Spinner className="brand-spinner" />}
       </div>
 

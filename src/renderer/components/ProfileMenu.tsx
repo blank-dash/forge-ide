@@ -75,7 +75,7 @@ export default function ProfileMenu() {
       onSelect: () =>
         void window.forge.openExternal('https://github.com/blank-dash/forge-ide#readme')
     },
-    { kind: 'header', label: `Forge ${bootstrap?.appVersion ?? ''}` }
+    { kind: 'header', label: `Forge dash ${bootstrap?.appVersion ?? ''}` }
   ]
 
   return (

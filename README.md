@@ -1,8 +1,8 @@
 ﻿<div align="center">
 
-<img src="build/icon-256.png" width="120" alt="Forge">
+<img src="build/icon-256.png" width="120" alt="Forge dash">
 
-# Forge
+# Forge dash
 
 **An agentic IDE where you bring the model.**
 

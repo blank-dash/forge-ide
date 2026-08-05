@@ -42,7 +42,7 @@ export class Recorder {
       .catch((error: Error) => {
         throw new Error(
           error.name === 'NotAllowedError'
-            ? 'Microphone access was refused. Allow it for Forge and try again.'
+            ? 'Microphone access was refused. Allow it for Forge dash and try again.'
             : `No microphone available: ${error.message}`
         )
       })

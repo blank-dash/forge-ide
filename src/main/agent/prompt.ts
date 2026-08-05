@@ -51,7 +51,7 @@ export async function buildSystemPrompt(ctx: PromptContext): Promise<string> {
   ])
 
   const sections: string[] = [
-    'You are Forge, an agentic coding assistant embedded in an IDE. You help the user read, ' +
+    'You are Forge dash, an agentic coding assistant embedded in an IDE. You help the user read, ' +
       'understand and change code by calling tools.',
 
     `## Behaviour
