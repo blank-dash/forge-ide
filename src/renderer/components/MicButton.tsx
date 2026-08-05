@@ -35,12 +35,12 @@ export default function MicButton({ onText }: Props) {
     }
 
     try {
-      await recorder.current.start()
+      await recorder.current.start(voice.inputDevice)
       setRecording(true)
     } catch (error) {
       pushError((error as Error).message)
     }
-  }, [recording, working, voice.inputModel, pushError, patchUi])
+  }, [recording, working, voice.inputModel, voice.inputDevice, pushError, patchUi])
 
   const finish = useCallback(async () => {
     if (!recorder.current.active) return

@@ -108,13 +108,19 @@ export class LiveSession {
     return this.status
   }
 
-  /** A frame of the shared surface, and the coordinate space it defines. */
-  async look(): Promise<Frame> {
+  /**
+   * A frame of the shared surface, and the coordinate space it defines.
+   *
+   * `width` is for the preview, which refreshes on a timer and only has to be
+   * recognisable — capturing it at the size the model reads would double the
+   * work for no one's benefit.
+   */
+  async look(width?: number): Promise<Frame> {
     this.assertActive()
-    const frame = await captureFrame(this.status.sourceId)
-    // Kept because every subsequent coordinate the agent gives is relative to
-    // this image, not to the desktop.
-    this.lastFrame = frame
+    const frame = await captureFrame(this.status.sourceId, width)
+    // Only a full-size frame defines the coordinate space: remembering a
+    // preview-sized one would silently halve every click coordinate.
+    if (width === undefined) this.lastFrame = frame
     return frame
   }
 

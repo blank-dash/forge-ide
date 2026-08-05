@@ -23,12 +23,15 @@ export class Recorder {
     return this.recorder?.state === 'recording'
   }
 
-  async start(): Promise<void> {
+  async start(deviceId?: string): Promise<void> {
     if (this.active) return
 
     this.stream = await navigator.mediaDevices
       .getUserMedia({
         audio: {
+          // `exact` would fail outright when a headset is unplugged between
+          // sessions; a plain id falls back to the default device instead.
+          ...(deviceId ? { deviceId } : {}),
           // Speech, not music: these three make a laptop microphone in a room
           // with a fan usable, and the recogniser is far more accurate for it.
           echoCancellation: true,
@@ -144,6 +147,24 @@ export function stopSpeaking(): void {
 
 export function isSpeaking(): boolean {
   return systemSpeaking || (audio !== null && !audio.paused)
+}
+
+/**
+ * Microphones this machine has.
+ *
+ * Labels are hidden until permission has been granted at least once, so this
+ * asks for it first — otherwise the picker shows a list of blank entries.
+ */
+export async function microphones(): Promise<MediaDeviceInfo[]> {
+  try {
+    const probe = await navigator.mediaDevices.getUserMedia({ audio: true })
+    for (const track of probe.getTracks()) track.stop()
+  } catch {
+    // Refused: the list will have ids but no names, which is still usable.
+  }
+
+  const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+  return devices.filter((device) => device.kind === 'audioinput')
 }
 
 /** Voices installed on this machine. */

@@ -63,16 +63,31 @@ export async function listSources(): Promise<CaptureSource[]> {
 /**
  * One frame of the chosen source.
  *
- * Captured at the surface's real size and then scaled down once, rather than
- * asking for a small thumbnail directly: the downscale is what keeps text
- * legible, and it is also what makes the coordinate mapping exact.
+ * Two things here are latency, not tidiness.
+ *
+ * Only the needed type is requested: asking for screens *and* windows makes the
+ * system capture every window as well, and on a busy desktop that is dozens of
+ * captures to produce one frame.
+ *
+ * And the size is asked for directly rather than captured full and resized
+ * afterwards. The scaling happens in native code during the capture instead of
+ * over a 4K buffer in JavaScript, which is most of the cost.
  */
-export async function captureFrame(sourceId: string): Promise<Frame> {
+export async function captureFrame(sourceId: string, width = AGENT_WIDTH): Promise<Frame> {
   const bounds = surfaceBounds(sourceId)
+  const isScreen = sourceId.startsWith('screen:')
+
+  // Never upscale: a small window asked for at 1280 wide comes back blurry and
+  // costs more to look at than the sharp original.
+  const target = Math.min(width, bounds.width)
+  const scaled = {
+    width: target,
+    height: Math.max(1, Math.round((bounds.height / bounds.width) * target))
+  }
 
   const sources = await desktopCapturer.getSources({
-    types: ['screen', 'window'],
-    thumbnailSize: { width: bounds.width, height: bounds.height },
+    types: [isScreen ? 'screen' : 'window'],
+    thumbnailSize: scaled,
     fetchWindowIcons: false
   })
 
@@ -87,19 +102,14 @@ export async function captureFrame(sourceId: string): Promise<Frame> {
     )
   }
 
-  const full = source.thumbnail.getSize()
-  const scaled =
-    full.width > AGENT_WIDTH
-      ? source.thumbnail.resize({ width: AGENT_WIDTH, quality: 'good' })
-      : source.thumbnail
-
-  const size = scaled.getSize()
+  const size = source.thumbnail.getSize()
   return {
-    data: scaled.toPNG().toString('base64'),
+    data: source.thumbnail.toPNG().toString('base64'),
     width: size.width,
     height: size.height,
-    sourceWidth: full.width,
-    sourceHeight: full.height,
+    // The real surface, not the captured one: this is what maps a click back.
+    sourceWidth: bounds.width,
+    sourceHeight: bounds.height,
     originX: bounds.x,
     originY: bounds.y
   }

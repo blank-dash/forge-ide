@@ -21,7 +21,20 @@ export class SessionStore {
     return path.join(app.getPath('userData'), 'sessions', hash)
   }
 
+  /**
+   * Waits for any queued write to land.
+   *
+   * Saving is fire-and-forget so a turn never blocks on the disk, which means
+   * a listing taken right after a turn ends can read the directory before the
+   * file is there — and the conversation you just had is missing from history
+   * until something else happens to refresh it.
+   */
+  async flush(): Promise<void> {
+    await this.writeQueue.catch(() => undefined)
+  }
+
   async list(): Promise<SessionSummary[]> {
+    await this.flush()
     const dir = this.dir
     const names = await fs.readdir(dir).catch(() => [] as string[])
 

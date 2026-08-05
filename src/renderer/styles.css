@@ -3913,3 +3913,12 @@ img.menu-avatar {
 .speak-btn:hover {
   color: var(--accent);
 }
+
+/* The Live pill carries the same red as the status-bar badge, so the two read
+   as one state rather than two unrelated indicators. */
+.pill.live-on {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 55%, transparent);
+  background: color-mix(in oklab, var(--red) 12%, transparent);
+  gap: 6px;
+}

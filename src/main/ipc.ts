@@ -18,6 +18,7 @@ import { SkillLibrary } from './agent/skills'
 import { activeTools, makeUseSkillTool, shellInfo } from './agent/tools'
 import { makeBrowserTools } from './agent/tools/browser'
 import { makeLiveTools } from './agent/tools/live'
+import { makeWebTools } from './agent/tools/search.web'
 import { LiveSession, type LiveAccess } from './live/session'
 import { Git } from './git'
 import { McpManager } from './mcp/manager'
@@ -58,6 +59,9 @@ export interface Services {
   dispose(): void
 }
 
+/** The live preview only has to be recognisable, not readable. */
+const PREVIEW_WIDTH = 480
+
 /** Git status is polled rather than watched; this is the floor between refreshes. */
 const GIT_CONTEXT_TTL_MS = 4_000
 
@@ -96,6 +100,7 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
   ) as unknown as Parameters<typeof activeTools>[0][number]
 
   const browser = new Browser(getWindow, (state) => send('browser:state', state))
+  const scout = new Browser(getWindow, () => undefined, { headless: true })
 
   const live = new LiveSession(
     (status) => send('live:status', status),
@@ -111,6 +116,10 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
     send('browser:reveal', true)
   ) as unknown as Parameters<typeof activeTools>[0]
 
+  // Reading the web happens through a view that never joins the window, so a
+  // lookup does not take over the screen or navigate the page you are on.
+  const webTools = makeWebTools(scout) as unknown as Parameters<typeof activeTools>[0]
+
   /**
    * What the model can reach into the host with.
    *
@@ -122,9 +131,10 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
     live.isActive
       ? ([
           ...browserTools,
+          ...webTools,
           ...(makeLiveTools(live) as unknown as Parameters<typeof activeTools>[0])
         ] as Parameters<typeof activeTools>[0])
-      : browserTools
+      : ([...browserTools, ...webTools] as Parameters<typeof activeTools>[0])
 
   const manager: SessionManager = new SessionManager(
     (currentId) => ({
@@ -315,6 +325,7 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       updater.stop()
       scheduler.stop()
       browser.dispose()
+      scout.dispose()
       stopSystemSpeech()
       // Never left running past the window: sharing a screen must end when the
       // thing you started it from is gone.
@@ -548,7 +559,7 @@ function registerHandlers(
 
   /** A frame for the preview, so the user sees exactly what the agent sees. */
   handle('live:frame', async () => {
-    const frame = await live.look()
+    const frame = await live.look(PREVIEW_WIDTH)
     return `data:image/png;base64,${frame.data}`
   })
 

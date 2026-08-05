@@ -131,6 +131,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: {
     inputModel: '',
     inputLanguage: '',
+    inputDevice: '',
     pushToTalk: true,
     // Off by default: an app that starts talking on its own the first time you
     // use it is one people turn off and never turn back on.

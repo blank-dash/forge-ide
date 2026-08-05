@@ -298,11 +298,15 @@ cannot reach the app's own state, and nothing about it is stored beside it.
 Typing `localhost:5173` opens `http://localhost:5173`; typing something without
 a dot or a port searches for it instead.
 
-The agent has two tools for it. `open_page` navigates and reads the result back
-as text, bringing the pane to the front so you see what it opened. `read_page`
-re-reads whatever is already there. Opening a page asks permission the first
-time, under the same rule as reaching outside the workspace — which also means a
-scheduled task below full access cannot quietly start fetching URLs.
+Looking something up does not open it. `search_web` and `read_url` read through
+a second view that never joins the window: the agent says it is searching, and
+comes back with an answer, without throwing a browser across your screen or
+navigating away from the page you had open. `open_page` is the one that shows
+you something, for when seeing it is the point.
+
+All of them ask permission the first time, under the same rule as reaching
+outside the workspace — which also means a scheduled task below full access
+cannot quietly start fetching URLs.
 
 ## Scheduled tasks
 

@@ -42,6 +42,11 @@ export default function ConversationList({ variant }: Props) {
     if (!running) void refresh()
   }, [running, refresh])
 
+  // The main process is the authority on what exists: a background turn
+  // finishing, a task run being recorded, a workspace switch. Inferring it from
+  // `running` alone missed all three.
+  useEffect(() => window.forge.agent.onSessionsChanged(() => void refresh()), [refresh])
+
   useEffect(() => {
     void refresh()
   }, [liveSessions.length, refresh])

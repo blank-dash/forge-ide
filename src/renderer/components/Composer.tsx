@@ -42,6 +42,7 @@ export default function Composer() {
   const patchUi = useStore((state) => state.patchUi)
   const totals = useStore((state) => state.totals)
   const changeCount = useStore((state) => state.changes.length)
+  const live = useStore((state) => state.live)
 
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
@@ -472,6 +473,19 @@ export default function Composer() {
       </div>
 
       <div className="composer-row">
+        <button
+          className={`pill ${live?.active ? 'live-on' : ''}`}
+          title={
+            live?.active
+              ? t('Live mode is running — click to open it')
+              : t('Share your screen with the agent')
+          }
+          onClick={() => patchUi({ chatPane: 'live' })}
+        >
+          {live?.active && <span className="live-dot" />}
+          {t('Live')}
+        </button>
+
         <MicButton
           onText={(text) =>
             // Appended rather than replacing: dictation is usually the tail of

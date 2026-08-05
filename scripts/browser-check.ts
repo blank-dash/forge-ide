@@ -122,6 +122,34 @@ app.whenReady().then(async () => {
       )
   )
 
+  /* ---------------- background reading ---------------- */
+
+  // A headless instance is what web search and read_url use: it must never
+  // join the window, and it must still be able to load and read a page.
+  const scout = new Browser(
+    () => window,
+    () => assert.fail('a headless browser must not publish state to the UI'),
+    { headless: true }
+  )
+
+  scout.setVisible(true)
+  check('a headless browser refuses to be shown', () => {
+    assert.equal(window.contentView.children.length, 1, 'the headless view attached itself')
+  })
+
+  await scout.navigate(`http://127.0.0.1:${port}/`)
+  const scouted = await scout.readText()
+
+  check('a headless browser still reads pages', () => {
+    assert.ok(scouted.text.includes('Hello from the check'))
+  })
+
+  check('reading in the background does not disturb the visible page', () => {
+    assert.equal(browser.state().title, 'Forge browser check')
+  })
+
+  scout.dispose()
+
   browser.setVisible(false)
   check('hiding detaches the view', () => {
     assert.equal(window.contentView.children.length, 0)

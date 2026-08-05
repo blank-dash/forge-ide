@@ -62,6 +62,32 @@ app.whenReady().then(async () => {
 
   const frame = await captureFrame(screenSource.id)
 
+  // Timed, because latency is a feature here: the agent looks, acts, and looks
+  // again, so every frame sits on the critical path of every action it takes.
+  const timings: number[] = []
+  for (let round = 0; round < 3; round++) {
+    const started = Date.now()
+    await captureFrame(screenSource.id)
+    timings.push(Date.now() - started)
+  }
+  const median = timings.sort((a, b) => a - b)[1]
+  console.log(`  ..  capture takes ${timings.join('ms, ')}ms`)
+
+  check('a frame arrives fast enough to act on', () => {
+    assert.ok(median < 900, `median capture was ${median}ms`)
+  })
+
+  const previewStart = Date.now()
+  await captureFrame(screenSource.id, 480)
+  const previewMs = Date.now() - previewStart
+  console.log(`  ..  preview-sized capture takes ${previewMs}ms`)
+
+  check('asking for a smaller frame actually costs less', () => {
+    // If it did not, the size were being applied after the capture rather than
+    // during it, which is the expensive way round.
+    assert.ok(previewMs <= median + 60, `preview ${previewMs}ms vs full ${median}ms`)
+  })
+
   check('a frame comes back with real pixels', () => {
     assert.ok(frame.data.length > 1000, `frame was ${frame.data.length} bytes of base64`)
     assert.ok(frame.width > 0 && frame.height > 0)

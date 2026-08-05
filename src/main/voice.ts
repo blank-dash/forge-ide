@@ -89,6 +89,17 @@ export async function transcribe(
   })
 
   const body = await response.text()
+  if (response.status === 404) {
+    // Being OpenAI-shaped for chat does not mean having the audio endpoints.
+    // Most gateways and local servers implement /chat/completions and nothing
+    // else, and a bare "404 page not found" gives no hint of that.
+    throw new Error(
+      `${provider.name} has no transcription endpoint — ${trimSlash(provider.baseUrl)}` +
+        '/audio/transcriptions does not exist. Speaking to it needs a provider that offers ' +
+        'speech-to-text: OpenAI, Groq, or a local server that implements it. Pick one under ' +
+        'Settings → Voice.'
+    )
+  }
   if (!response.ok) {
     throw new Error(`${provider.name} could not transcribe that: ${describe(response.status, body)}`)
   }
@@ -122,6 +133,13 @@ export async function speak(
     })
   })
 
+  if (response.status === 404) {
+    throw new Error(
+      `${provider.name} has no speech endpoint — ${trimSlash(provider.baseUrl)}/audio/speech does ` +
+        "not exist. Use this computer's voices instead, or choose a provider that offers " +
+        'text-to-speech.'
+    )
+  }
   if (!response.ok) {
     const body = await response.text()
     throw new Error(`${provider.name} could not speak that: ${describe(response.status, body)}`)

@@ -47,18 +47,30 @@ async function main(): Promise<void> {
   const before = cursorPosition()
   console.log(`  ..  cursor is at ${before.x},${before.y}`)
 
-  // One pixel sideways, then checked immediately. Asserting that the cursor
-  // returns to exactly where it started would be flaky for a reason that has
-  // nothing to do with the code: whoever is running this may move the mouse.
-  const target = { x: before.x + 1, y: before.y }
-  await backend.move(target.x, target.y)
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  /*
+   * Retried, because the failure this can produce is not the product's.
+   *
+   * Whoever runs this is at the machine and may move the mouse in the window
+   * between commanding a position and reading it back. One attempt landing is
+   * proof the helper reaches the desktop; a miss proves only that a hand moved.
+   */
+  let landed = false
+  let lastSeen = before
 
-  const moved = cursorPosition()
-  assert.deepEqual(
-    moved,
-    target,
-    'the helper started but its input is not reaching the desktop' +
+  for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+    const target = { x: before.x + 1 + attempt, y: before.y }
+    await backend.move(target.x, target.y)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    lastSeen = cursorPosition()
+    landed = lastSeen.x === target.x && lastSeen.y === target.y
+  }
+
+  assert.ok(
+    landed,
+    'the cursor never landed where it was told to, over four attempts' +
+      `
+       last seen at ${lastSeen.x},${lastSeen.y}` +
       `
        helper said: ${
         (backend as { lastError?: () => string }).lastError?.() || '(nothing)'

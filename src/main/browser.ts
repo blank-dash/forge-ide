@@ -35,6 +35,14 @@ export const BROWSER_HOME = 'about:blank'
 
 export class Browser {
   private view: WebContentsView | null = null
+  /**
+   * A view that is never attached to the window.
+   *
+   * Looking something up should not take over the screen. A separate view also
+   * keeps the agent's reading off whatever page you have open — otherwise every
+   * search would navigate away from what you were looking at.
+   */
+  private headless = false
   private attached = false
   private visible = false
   private bounds: Bounds = { x: 0, y: 0, width: 0, height: 0 }
@@ -42,15 +50,16 @@ export class Browser {
 
   constructor(
     private readonly getWindow: () => BrowserWindow | null,
-    private readonly onState: (state: BrowserState) => void
-  ) {}
+    private readonly onState: (state: BrowserState) => void,
+    options: { headless?: boolean } = {}
+  ) {
+    this.headless = options.headless ?? false
+  }
 
   /** Creates the view on first use; opening the pane is what pays for it. */
   private ensure(): WebContentsView | null {
     if (this.view) return this.view
-
-    const window = this.getWindow()
-    if (!window) return null
+    if (!this.getWindow()) return null
 
     const view = new WebContentsView({
       webPreferences: {
@@ -127,6 +136,9 @@ export class Browser {
    * video behind a screen nobody is looking at.
    */
   setVisible(visible: boolean): void {
+    // A headless instance exists only to read pages; showing it would put a
+    // second browser on top of the real one.
+    if (this.headless) return
     this.visible = visible
     const window = this.getWindow()
     if (!window) return
@@ -233,6 +245,42 @@ export class Browser {
     }
   }
 
+  /**
+   * Search results, pulled out of the page rather than read as prose.
+   *
+   * Reading a results page as text gives the model a wall of navigation and
+   * advert copy with the links stripped out — which is the one part it needs.
+   */
+  async extractResults(): Promise<Array<{ title: string; url: string; snippet: string }>> {
+    const view = this.ensure()
+    if (!view) throw new Error('The browser is not available.')
+
+    const raw = (await view.webContents
+      .executeJavaScript(
+        `(() => {
+          const out = []
+          for (const node of document.querySelectorAll('.result, .web-result')) {
+            const link = node.querySelector('a.result__a, a.result__url')
+            if (!link) continue
+            const snippet = node.querySelector('.result__snippet')
+            out.push({
+              title: (link.textContent || '').trim(),
+              href: link.getAttribute('href') || '',
+              snippet: (snippet?.textContent || '').trim()
+            })
+          }
+          return out.slice(0, 25)
+        })()`,
+        true
+      )
+      .catch(() => [])) as Array<{ title: string; href: string; snippet: string }>
+
+    return raw
+      .map((entry) => ({ ...entry, url: unwrap(entry.href) }))
+      .filter((entry) => entry.title && entry.url)
+      .map((entry) => ({ title: entry.title, url: entry.url, snippet: entry.snippet }))
+  }
+
   dispose(): void {
     if (!this.view) return
 
@@ -253,6 +301,7 @@ export class Browser {
   }
 
   private publish(): void {
+    if (this.headless) return
     if (this.visible || this.view) this.onState(this.state())
   }
 }
@@ -280,6 +329,23 @@ export function normaliseUrl(input: string): string {
   return looksLikeHost
     ? `https://${trimmed}`
     : `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}`
+}
+
+/**
+ * Recovers the real destination from a redirect wrapper.
+ *
+ * Search results link through the engine's own tracker; handing the model that
+ * URL means the next fetch goes to the tracker rather than the page.
+ */
+function unwrap(href: string): string {
+  try {
+    const url = new URL(href, 'https://duckduckgo.com')
+    const target = url.searchParams.get('uddg')
+    const resolved = target ? decodeURIComponent(target) : url.toString()
+    return /^https?:\/\//i.test(resolved) ? resolved : ''
+  } catch {
+    return ''
+  }
 }
 
 function isBrowsable(url: string): boolean {

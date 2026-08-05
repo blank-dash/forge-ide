@@ -17,9 +17,10 @@ export function makeBrowserTools(browser: Browser, reveal: () => void): ToolDef<
   const openPage: ToolDef<OpenInput> = {
     name: 'open_page',
     description:
-      'Open a URL in the built-in browser and return the page as text. Use this to show the ' +
-      'user a running dev server, check what a page actually renders, or read documentation. ' +
-      'The browser pane comes to the front so they can see it.',
+      'Open a URL in the built-in browser pane, where the user can see it, and return the page ' +
+      'as text. This takes over their screen, so use it only when seeing the page is the point ' +
+      '— a running dev server, a design you were asked to look at. To read something in order ' +
+      'to answer a question, use read_url or search_web instead: those happen in the background.',
     parameters: objectSchema(
       {
         url: string('Address to open. A bare hostname gets https:// added.')

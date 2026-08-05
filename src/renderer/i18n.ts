@@ -242,6 +242,7 @@ const RU: Record<string, string> = {
   'Speaking to it': 'Вы — ему',
   'It speaking to you': 'Он — вам',
   'Transcription model': 'Модель распознавания',
+  Microphone: 'Микрофон',
   'Not set': 'Не выбрано',
   auto: 'авто',
   'A two-letter code such as "ru" or "en" makes recognition noticeably more accurate. Leave it empty and the model works it out, which is fine when you switch languages often.':
@@ -273,6 +274,8 @@ const RU: Record<string, string> = {
 
   /* Live mode */
   'Live mode': 'Live-режим',
+  Live: 'Live',
+  'Share your screen with the agent': 'Показать агенту экран',
   Sharing: 'Транслируется',
   'The agent can see this and can click and type on it.':
     'Агент это видит и может здесь нажимать и печатать.',

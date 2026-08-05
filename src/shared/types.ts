@@ -503,6 +503,8 @@ export interface VoiceSettings {
   inputModel: string
   /** Language hint for the recogniser, e.g. "ru". Empty means auto-detect. */
   inputLanguage: string
+  /** Microphone deviceId, or empty for whatever the system considers default. */
+  inputDevice: string
   /** Hold the mic button, or click once to start and again to stop. */
   pushToTalk: boolean
   /**

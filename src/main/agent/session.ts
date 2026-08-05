@@ -137,6 +137,10 @@ export class AgentSession {
 
       this.messages.push({ id: randomUUID(), role: 'user', content, createdAt: Date.now() })
       if (this.title === 'New session') this.title = deriveTitle(text)
+      // Saved now rather than only when the reply lands: a conversation you
+      // have already started should be in the history list while it is still
+      // being answered, not appear minutes later.
+      this.persist()
 
       // A path the user typed themselves needs no approval dialog.
       for (const granted of await findMentionedPaths(text)) this.grants.add(granted)

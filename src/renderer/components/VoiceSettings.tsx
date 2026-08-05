@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Settings } from '@shared/types'
 import { useT } from '../i18n'
-import { speak, systemVoices } from '../voice'
+import { microphones, speak, systemVoices } from '../voice'
 import Select from './Select'
 
 type Props = {
@@ -17,10 +17,12 @@ const API_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
 export default function VoiceSettings({ draft, patch }: Props) {
   const t = useT()
   const [voices, setVoices] = useState<Array<{ name: string; lang: string }>>([])
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([])
   const voice = draft.voice
 
   useEffect(() => {
     void systemVoices().then(setVoices)
+    void microphones().then(setMics)
   }, [])
 
   const set = (partial: Partial<Settings['voice']>): void =>
@@ -90,6 +92,23 @@ export default function VoiceSettings({ draft, patch }: Props) {
         {t(
           'A two-letter code such as "ru" or "en" makes recognition noticeably more accurate. Leave it empty and the model works it out, which is fine when you switch languages often.'
         )}
+      </div>
+
+      <div className="field">
+        <label>{t('Microphone')}</label>
+        <Select
+          value={voice.inputDevice}
+          onChange={(inputDevice) => set({ inputDevice })}
+          options={[
+            { value: '', label: t('System default') },
+            ...mics.map((device, index) => ({
+              value: device.deviceId,
+              // A device with no label means permission has never been granted;
+              // an index at least tells them apart.
+              label: device.label || `${t('Microphone')} ${index + 1}`
+            }))
+          ]}
+        />
       </div>
 
       <label className="switch" style={{ marginTop: 12 }}>

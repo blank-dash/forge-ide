@@ -113,11 +113,18 @@ function SpeakButton({ entry }: { entry: ChatEntry }): JSX.Element | null {
 
   const text = entry.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join(' ')
 
+  const live = useStore((state) => state.live)
+
   useEffect(() => {
-    if (!voice.autoSpeak || voice.speak === 'off' || spoken.current || !text.trim()) return
+    // Sharing a screen means you are looking at something else. Reading the
+    // reply aloud is the whole point of the mode, so it does not wait for the
+    // "read every reply" preference to have been found and switched on.
+    const wanted = voice.autoSpeak || live?.active === true
+    if (!wanted || voice.speak === 'off' || spoken.current || !text.trim()) return
+
     spoken.current = true
     void speak(text).catch(() => undefined)
-  }, [voice.autoSpeak, voice.speak, text])
+  }, [voice.autoSpeak, voice.speak, live?.active, text])
 
   if (voice.speak === 'off' || !text.trim()) return null
 
