@@ -38,6 +38,7 @@ export default function Composer() {
 
   const running = useStore((state) => state.running)
   const settings = useStore((state) => state.settings)
+  const sessionModel = useStore((state) => state.sessionModel)
   const saveSettings = useStore((state) => state.saveSettings)
   const patchUi = useStore((state) => state.patchUi)
   const totals = useStore((state) => state.totals)
@@ -83,8 +84,8 @@ ${composerInsert.text}` : composerInsert.text
     ])
   }, [])
 
-  const reasoning = supportsThinking(settings)
-  const visionOk = supportsVision(settings)
+  const reasoning = supportsThinking(settings, sessionModel)
+  const visionOk = supportsVision(settings, sessionModel)
 
   const addAttachments = useCallback(async (incoming: Attachment[]) => {
     if (incoming.length === 0) return
@@ -741,24 +742,25 @@ ${composerInsert.text}` : composerInsert.text
   )
 }
 
-function activeModel(settings: Settings) {
-  const sep = settings.activeModel.indexOf(':')
-  const providerId = settings.activeModel.slice(0, sep)
-  const modelId = settings.activeModel.slice(sep + 1)
+function activeModel(settings: Settings, selected?: string | null) {
+  const ref = selected || settings.activeModel
+  const sep = ref.indexOf(':')
+  const providerId = ref.slice(0, sep)
+  const modelId = ref.slice(sep + 1)
   const provider = settings.providers.find((entry) => entry.id === providerId)
   return { modelId, provider, model: provider?.models.find((entry) => entry.id === modelId) }
 }
 
-function describeModel(settings: Settings): string {
-  const { model, modelId } = activeModel(settings)
+function describeModel(settings: Settings, selected?: string | null): string {
+  const { model, modelId } = activeModel(settings, selected)
   return model?.label || modelId || 'no model'
 }
 
 /** The effort control only makes sense for models that actually reason. */
-function supportsThinking(settings: Settings): boolean {
-  return activeModel(settings).model?.supportsThinking === true
+function supportsThinking(settings: Settings, selected?: string | null): boolean {
+  return activeModel(settings, selected).model?.supportsThinking === true
 }
 
-function supportsVision(settings: Settings): boolean {
-  return activeModel(settings).model?.supportsVision === true
+function supportsVision(settings: Settings, selected?: string | null): boolean {
+  return activeModel(settings, selected).model?.supportsVision === true
 }

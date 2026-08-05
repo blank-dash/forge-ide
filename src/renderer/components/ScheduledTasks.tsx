@@ -184,6 +184,7 @@ function TaskRow({ task, busy, onEdit, onRemove, onRun, onToggle }: RowProps) {
         entries: toEntries(record.messages),
         totals: record.totals
       })
+      store.setSessionModel(record.model ?? null)
     }
     store.patchUi({ chatPane: 'chats' })
   }

@@ -581,6 +581,8 @@ export interface SessionSummary {
 export interface SessionRecord extends SessionSummary {
   messages: Message[]
   totals: TokenUsage
+  /** Model selected for this conversation; absent means use the global default. */
+  model?: ModelRef
 }
 
 /* ------------------------------------------------------------------ */

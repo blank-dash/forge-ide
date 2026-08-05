@@ -816,6 +816,13 @@ function registerHandlers(
 
   handle('agent:activate', (sessionId: string) => manager.activate(sessionId))
 
+  handle('agent:model', (payload: { model: string; sessionId?: string }) => {
+    const target = payload.sessionId ? manager.get(payload.sessionId) : manager.current()
+    if (!target) throw new Error('That conversation is no longer open.')
+    target.model = payload.model
+    return payload.model
+  })
+
   handle('agent:close', (sessionId: string) => {
     manager.close(sessionId)
     services.closeChanges(sessionId)

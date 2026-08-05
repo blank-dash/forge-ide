@@ -52,7 +52,8 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     models: [
       m('gpt-4.1', 'GPT-4.1', 1_000_000, 32_000, { input: 2, output: 8 }),
       m('gpt-4.1-mini', 'GPT-4.1 mini', 1_000_000, 32_000, { input: 0.4, output: 1.6 }),
-      m('o4-mini', 'o4-mini', 200_000, 100_000, { input: 1.1, output: 4.4 }, { supportsThinking: true })
+      m('o4-mini', 'o4-mini', 200_000, 100_000, { input: 1.1, output: 4.4 }, { supportsThinking: true }),
+      m('whisper-1', 'Whisper speech-to-text', 0, 0, undefined, { supportsVision: false })
     ]
   },
   {

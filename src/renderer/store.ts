@@ -96,6 +96,7 @@ interface State {
   permission: PermissionRequest | null
   /** Id of the conversation currently loaded in the main process. */
   sessionId: string | null
+  sessionModel: string | null
   /** Messages typed mid-turn that the agent has not picked up yet. */
   queuedCount: number
   /** How full the model's context window is for the next request. */
@@ -155,6 +156,7 @@ interface State {
   }): void
   setPermission(request: PermissionRequest | null): void
   setSessionId(id: string | null): void
+  setSessionModel(model: string | null): void
   /** Moves the on-screen conversation aside and brings another one forward. */
   switchSession(id: string, view?: SessionView): void
   setLiveSessions(sessions: Array<{ id: string; running: boolean }>): void
@@ -205,6 +207,7 @@ export const useStore = create<State>((set, get) => ({
   totals: EMPTY_USAGE,
   permission: null,
   sessionId: null,
+  sessionModel: null,
   queuedCount: 0,
   context: null,
 
@@ -460,6 +463,7 @@ export const useStore = create<State>((set, get) => ({
 
   setPermission: (permission) => set({ permission }),
   setSessionId: (sessionId) => set({ sessionId }),
+  setSessionModel: (sessionModel: string | null) => set({ sessionModel }),
 
   switchSession: (id, view) =>
     set((state) => {

@@ -77,6 +77,7 @@ export default function ConversationList({ variant }: Props) {
           running: live.running,
           changes: live.changes
         })
+        store.setSessionModel(live.model ?? null)
         return
       }
 
@@ -86,6 +87,7 @@ export default function ConversationList({ variant }: Props) {
         entries: toEntries(record.messages),
         totals: record.totals
       })
+      store.setSessionModel(record.model ?? null)
     } catch (error) {
       pushError((error as Error).message)
     }

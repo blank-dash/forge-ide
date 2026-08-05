@@ -59,6 +59,7 @@ export default function App() {
         if (state) {
           store.setChanges(state.changes ?? [])
           store.setSessionId(state.id)
+          store.setSessionModel(state.model ?? null)
         }
         // A task can already be mid-run when the window opens — after a reload,
         // or because the app was launched into one that was overdue.

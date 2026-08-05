@@ -167,6 +167,7 @@ export interface BrowserState {
 export interface AgentState {
   id: string
   title: string
+  model?: string
   messages: Message[]
   totals: TokenUsage
   running: boolean
@@ -242,6 +243,7 @@ const api = {
     /** Opens a new conversation; existing ones keep running. */
     create: () => call<string>('agent:new'),
     activate: (sessionId: string) => call<boolean>('agent:activate', sessionId),
+    model: (model: string, sessionId?: string) => call<string>('agent:model', { model, sessionId }),
     close: (sessionId: string) => call<boolean>('agent:close', sessionId),
     state: (sessionId?: string) => call<AgentState | null>('agent:state', sessionId),
     live: () => call<LiveSession[]>('agent:live'),

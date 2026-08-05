@@ -69,6 +69,7 @@ export interface SessionDeps {
 export class AgentSession {
   id: string = randomUUID()
   title = 'New session'
+  model: string | undefined
   messages: Message[] = []
   totals: TokenUsage = emptyUsage()
   readonly changes = new ChangeTracker()
@@ -95,6 +96,7 @@ export class AgentSession {
     this.id = randomUUID()
     this.messages = []
     this.title = 'New session'
+    this.model = undefined
     this.totals = emptyUsage()
     this.grants.clear()
     this.queued = []
@@ -105,6 +107,7 @@ export class AgentSession {
     this.abort()
     this.id = record.id
     this.title = record.title
+    this.model = record.model
     this.messages = record.messages ?? []
     this.totals = record.totals ?? emptyUsage()
     this.grants.clear()
@@ -117,9 +120,15 @@ export class AgentSession {
       title: this.title,
       updatedAt: Date.now(),
       messageCount: this.messages.length,
+      model: this.model,
       messages: this.messages,
       totals: this.totals
     }
+  }
+
+  setModel(model: string): void {
+    this.model = model
+    this.persist()
   }
 
   /**
@@ -184,7 +193,7 @@ export class AgentSession {
         if (signal.aborted) break
 
         const settings = this.deps.settings()
-        const resolved = resolveModel(settings, settings.activeModel)
+        const resolved = resolveModel(settings, this.model ?? settings.activeModel)
         const tools = activeTools(
           this.deps.mcpTools(),
           this.deps.skillTool(),

@@ -6,6 +6,7 @@ interface Props {
 }
 
 export default function ModelPicker({ onClose }: Props): JSX.Element {
+  const selected = useStore((state) => state.sessionModel)
   const settings = useStore((state) => state.settings)
   const patchUi = useStore((state) => state.patchUi)
   const ref = useRef<HTMLDivElement>(null)
@@ -26,8 +27,8 @@ export default function ModelPicker({ onClose }: Props): JSX.Element {
   }, [onClose])
 
   const select = async (ref_: string): Promise<void> => {
-    const next = await window.forge.settings.set({ ...settings, activeModel: ref_ })
-    useStore.getState().setSettings(next)
+    const next = await window.forge.agent.model(ref_, useStore.getState().sessionId ?? undefined)
+    useStore.getState().setSessionModel(next)
     onClose()
   }
 
@@ -52,7 +53,7 @@ export default function ModelPicker({ onClose }: Props): JSX.Element {
           )}
           {provider.models.map((model) => {
             const value = `${provider.id}:${model.id}`
-            const active = settings.activeModel === value
+            const active = (selected || settings.activeModel) === value
             return (
               <button
                 key={value}

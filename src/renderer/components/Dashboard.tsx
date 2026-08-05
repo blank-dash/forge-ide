@@ -67,6 +67,7 @@ export default function Dashboard() {
         running: live.running,
         changes: live.changes
       })
+        store.setSessionModel(live.model ?? null)
       return
     }
 
@@ -77,6 +78,7 @@ export default function Dashboard() {
         entries: toEntries(record.messages),
         totals: record.totals
       })
+      store.setSessionModel(record.model ?? null)
     }
   }
 
