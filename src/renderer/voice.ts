@@ -117,10 +117,17 @@ export async function speak(text: string, using?: VoiceSettings): Promise<void> 
   stopSpeaking()
 
   if (voice.speak === 'api') {
-    const spoken = await window.forge.voice.speak(clean, voice.voiceName)
-    audio = new Audio(`data:${spoken.mediaType};base64,${spoken.data}`)
-    await audio.play()
-    return
+    try {
+      const spoken = await window.forge.voice.speak(clean, voice.voiceName)
+      audio = new Audio(`data:${spoken.mediaType};base64,${spoken.data}`)
+      await audio.play()
+      return
+    } catch (error) {
+      // Chat-only providers often expose no TTS endpoint. Fall back to the OS
+      // voice so Live mode still speaks instead of failing the whole reply.
+      const message = error instanceof Error ? error.message : String(error)
+      if (!new RegExp('speech endpoint|audio/speech|404|not found', 'i').test(message)) throw error
+    }
   }
 
   // Through the main process, not `speechSynthesis`. Chromium's speech API is
