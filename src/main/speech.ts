@@ -88,12 +88,9 @@ function speakWindows(text: string, voice: string, rate: number): ChildProcess {
     '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer',
     `$s.Rate = ${scaled}`,
     voice ? `try { $s.SelectVoice(${psQuote(voice)}) } catch {}` : '',
-    // Select a Russian Windows voice automatically when the text contains
-    // Cyrillic and the configured voice is English or unavailable.
-    // Read from stdin rather than embedded in the script: an argument would
-    // have to survive two levels of quoting, and any reply containing a quote
-    // would either break the command or run part of itself.
-    '$text = [Console]::In.ReadToEnd()',
+    // Encode the text in the Node process so PowerShell never decodes UTF-8
+    // through the active Windows code page.
+    `$text = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${psQuote(Buffer.from(text, 'utf8').toString('base64'))}))`,
     "if ($text -match '[А-Яа-яЁё]') { try { $ru = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'ru*' } | Select-Object -First 1; if ($ru) { $s.SelectVoice($ru.VoiceInfo.Name) } } catch {} }",
     '$s.Speak($text)'
   ]
@@ -105,7 +102,7 @@ function speakWindows(text: string, voice: string, rate: number): ChildProcess {
     ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
     { windowsHide: true }
   )
-  child.stdin.end(text, 'utf8')
+  child.stdin.end()
   return child
 }
 
