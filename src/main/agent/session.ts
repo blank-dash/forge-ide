@@ -53,6 +53,13 @@ export interface SessionDeps {
   skillTool(): ToolDef<Record<string, never>> | null
   /** Tools backed by main-process objects, e.g. the built-in browser. */
   hostTools(): ToolDef<Record<string, never>>[]
+  /** Called with each turn's usage, for the spending history. */
+  recordUsage(usage: TokenUsage): void
+  /** Called before any file is written, so the turn can be undone. */
+  beforeWrite(absolutePath: string): Promise<void>
+  /** Turn boundaries, for the same reason. */
+  turnBegan(): void
+  turnEnded(label: string): void
   /** Names and descriptions only — bodies load through the tool. */
   skillCatalogue(): string
   gitContext(): Promise<string>
@@ -166,6 +173,7 @@ export class AgentSession {
   /* ---------------------------------------------------------------- */
 
   private async runLoop(): Promise<void> {
+    this.deps.turnBegan()
     this.running = true
     this.controller = new AbortController()
     const signal = this.controller.signal
@@ -257,6 +265,9 @@ export class AgentSession {
       // unattended caller has no other way to tell a finished run from one that
       // was cut short.
       this.deps.emit({ type: 'idle', aborted: signal.aborted, truncated })
+      // After `idle`, so a listener that reacts to the turn ending sees the
+      // checkpoint already recorded rather than racing it.
+      this.deps.turnEnded(lastUserText(this.messages))
     }
   }
 
@@ -449,6 +460,7 @@ export class AgentSession {
 
     const turnUsage: TokenUsage = { ...usage, costUsd: computeCost(resolved.model, usage) }
     this.totals = addUsage(this.totals, turnUsage)
+    this.deps.recordUsage(turnUsage)
 
     // An assistant turn with no content at all would be rejected on the next
     // request by every provider, so keep it out of the history.
@@ -556,6 +568,7 @@ export class AgentSession {
       sessionGrants: [...this.grants],
       signal,
       changes: this.changes,
+      captureBefore: (absolutePath) => this.deps.beforeWrite(absolutePath),
       notifyFileChanged: (absolutePath) =>
         this.deps.emit({ type: 'file_changed', path: absolutePath }),
       requestPermission: (request) => this.requestPermission(request, signal)
@@ -719,6 +732,22 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
     }
     signal.addEventListener('abort', done, { once: true })
   })
+}
+
+/** The last thing the user actually asked, to label a checkpoint with. */
+function lastUserText(messages: Message[]): string {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]
+    if (message.role !== 'user') continue
+
+    const text = message.content
+      .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+      .map((block) => block.text)
+      .join(' ')
+      .trim()
+    if (text) return text
+  }
+  return ''
 }
 
 function errorResult(toolUseId: string, message: string): ToolResultBlock {

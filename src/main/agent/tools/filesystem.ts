@@ -130,6 +130,8 @@ export const writeFileTool: ToolDef<WriteInput> = {
       suggestedRule: writeRuleFor(ctx, absolute)
     })
 
+    // Before the write, so a turn can be put back however it was approved.
+    await ctx.captureBefore(absolute)
     await fs.mkdir(path.dirname(absolute), { recursive: true })
     await fs.writeFile(absolute, after, 'utf8')
     ctx.notifyFileChanged(absolute)
@@ -211,6 +213,7 @@ export const editFileTool: ToolDef<EditInput> = {
       suggestedRule: `Edit(${shown})`
     })
 
+    await ctx.captureBefore(absolute)
     await fs.writeFile(absolute, after, 'utf8')
     ctx.notifyFileChanged(absolute)
     stage(ctx, absolute, shown, before, after)
@@ -262,6 +265,7 @@ export const deleteFileTool: ToolDef<DeleteInput> = {
     })
     if (!approved) throw new ToolError('User rejected the deletion.')
 
+    await ctx.captureBefore(absolute)
     await fs.rm(absolute)
     // Recorded so the deletion can be undone from the review screen like any
     // other edit. Without this it was the one change with no way back.

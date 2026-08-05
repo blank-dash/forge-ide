@@ -105,6 +105,10 @@ function makeManager(base: Settings) {
     mcpTools: () => [],
     skillTool: () => null,
     hostTools: () => [],
+    recordUsage: () => undefined,
+    beforeWrite: async () => undefined,
+    turnBegan: () => undefined,
+    turnEnded: () => undefined,
     skillCatalogue: () => '',
     gitContext: async () => '',
     persist: () => {

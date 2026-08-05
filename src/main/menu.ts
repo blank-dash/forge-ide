@@ -81,6 +81,19 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
     {
       label: 'View',
       submenu: [
+        /*
+         * Listed without accelerators on purpose.
+         *
+         * A menu accelerator fires even while a text box has focus, which for
+         * Ctrl+P and Ctrl+Shift+F is wrong — those belong to whatever is being
+         * typed into. The renderer binds them on the document instead, where an
+         * input can opt out; this entry exists so the shortcut is discoverable.
+         */
+        { label: 'Go to File…  (Ctrl+P)', click: () => send('menu:picker', 'files') },
+        { label: 'Command Palette…  (Ctrl+Shift+P)', click: () => send('menu:picker', 'commands') },
+        { label: 'Go to Symbol…  (Ctrl+Shift+O)', click: () => send('menu:picker', 'symbols') },
+        { label: 'Search Across Files  (Ctrl+Shift+F)', click: () => send('menu:search') },
+        { type: 'separator' },
         { label: 'Chat mode', accelerator: 'CmdOrCtrl+1', click: () => send('menu:mode', 'chat') },
         { label: 'Edit mode', accelerator: 'CmdOrCtrl+2', click: () => send('menu:mode', 'agent') },
         { type: 'separator' },

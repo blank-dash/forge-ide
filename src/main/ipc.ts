@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type {
   AgentEvent,
@@ -25,7 +26,10 @@ import { McpManager } from './mcp/manager'
 import { getAdapter, testProvider } from './providers'
 import { createNotifier } from './notify'
 import { Scheduler } from './scheduler'
+import { CheckpointStore } from './checkpoints'
 import { SessionStore } from './sessions'
+import { UsageLog } from './usage'
+import { WorkspaceIndex } from './workspace-index'
 import { SettingsStore } from './store'
 import { shellLabel as terminalShellLabel, TerminalManager } from './terminal'
 import { TaskRunner } from './task-runner'
@@ -43,6 +47,9 @@ export interface Services {
   mcp: McpManager
   git: Git
   sessions: SessionStore
+  checkpoints: CheckpointStore
+  usage: UsageLog
+  index: WorkspaceIndex
   updater: Updater
   skills: SkillLibrary
   browser: Browser
@@ -74,6 +81,9 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
   const terminals = new TerminalManager(() => getWindow()?.webContents ?? null)
   const git = new Git(() => workspace.cwd)
   const sessions = new SessionStore(() => workspace.cwd)
+  const checkpoints = new CheckpointStore(() => workspace.cwd)
+  const index = new WorkspaceIndex(() => workspace.cwd)
+  const usage = new UsageLog()
   const tasks = new TaskStore(() => workspace.cwd)
   const mcp = new McpManager()
 
@@ -142,6 +152,16 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       settings: () => settings.get(),
       skillTool: () => (skills.all(settings.get().disabledSkills).length > 0 ? useSkill : null),
     hostTools: () => hostTools(),
+    beforeWrite: (absolutePath) => checkpoints.capture(currentId(), absolutePath),
+    turnBegan: () => checkpoints.begin(currentId()),
+    turnEnded: (label) => {
+      const id = currentId()
+      void checkpoints.commit(id, label).then((saved) => {
+        // Files changed, so the quick-open list is stale.
+        if (saved) index.invalidate()
+        if (saved) send('checkpoints:changed', true)
+      })
+    },
       skillCatalogue: () => skills.catalogue(settings.get().disabledSkills),
       saveSettings: (next) => {
         settings.set(next)
@@ -193,7 +213,8 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       persist: (record) => {
         void sessions.save(record)
         sendSessions()
-      }
+      },
+      recordUsage: (spent) => void usage.add(spent)
     }),
     () => sendSessions()
   )
@@ -305,6 +326,9 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
     mcp,
     git,
     sessions,
+    checkpoints,
+    index,
+    usage,
     updater,
     skills,
     browser,
@@ -318,21 +342,41 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       changeSubs.get(sessionId)?.()
       changeSubs.delete(sessionId)
     },
+    /**
+     * Shutdown, subsystem by subsystem, with none able to stop the others.
+     *
+     * This runs from `before-quit`, so anything that throws here can leave the
+     * app alive with its window gone — a process nobody can see and nobody can
+     * close, which then makes the installer refuse to update over it. A stray
+     * EPIPE writing to an already-dead helper is enough to cause that, so no
+     * single step is trusted not to fail.
+     */
     dispose(): void {
-      for (const off of changeSubs.values()) off()
-      changeSubs.clear()
-      offMcp()
-      updater.stop()
-      scheduler.stop()
-      browser.dispose()
-      scout.dispose()
-      stopSystemSpeech()
+      const step = (what: string, fn: () => void): void => {
+        try {
+          fn()
+        } catch (error) {
+          console.error(`[shutdown] ${what} failed`, error)
+        }
+      }
+
+      step('change subscriptions', () => {
+        for (const off of changeSubs.values()) off()
+        changeSubs.clear()
+      })
+      step('mcp status', offMcp)
+      step('updater', () => updater.stop())
+      step('scheduler', () => scheduler.stop())
+      step('browser', () => browser.dispose())
+      step('background browser', () => scout.dispose())
+      step('speech', stopSystemSpeech)
+      step('usage log', () => void usage.flush())
       // Never left running past the window: sharing a screen must end when the
       // thing you started it from is gone.
-      live.stop()
-      manager.abortAll()
-      terminals.killAll()
-      mcp.stopAll()
+      step('live mode', () => live.stop())
+      step('conversations', () => manager.abortAll())
+      step('terminals', () => terminals.killAll())
+      step('mcp servers', () => mcp.stopAll())
     }
   }
 
@@ -351,7 +395,7 @@ function registerHandlers(
   invalidateGit: () => void
 ): void {
   const { settings, workspace, terminals, manager, mcp, git, sessions, updater, skills } = services
-  const { tasks, scheduler, reloadTasks, browser, live } = services
+  const { tasks, scheduler, reloadTasks, browser, live, checkpoints, index, usage } = services
   const { trackChanges } = services
 
   const handle = <T>(channel: string, fn: (...args: never[]) => Promise<T> | T): void => {
@@ -523,6 +567,54 @@ function registerHandlers(
   })
 
   handle('workspace:open', (target: string) => adoptWorkspace(target))
+
+  /** Writes text to a file the user picks. Returns the path, or null. */
+  handle('fs:export', async (payload: { text: string; suggested: string }) => {
+    const window = getWindow()
+    if (!window) throw new Error('No window.')
+
+    const result = await dialog.showSaveDialog(window, {
+      title: 'Save',
+      defaultPath: path.join(workspace.cwd, payload.suggested),
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+
+    await writeFile(result.filePath, payload.text, 'utf8')
+    return result.filePath
+  })
+
+  /* ---------------- quick open and search ---------------- */
+
+  handle('index:files', () => index.files())
+  handle('index:refresh', async () => {
+    index.invalidate()
+    return index.files()
+  })
+  handle(
+    'index:search',
+    (payload: { query: string; regex?: boolean; caseSensitive?: boolean; include?: string }) =>
+      index.search(payload.query, payload)
+  )
+
+  /* ---------------- usage history ---------------- */
+
+  handle('usage:history', () => usage.read())
+
+  /* ---------------- checkpoints ---------------- */
+
+  handle('checkpoints:list', () => checkpoints.list())
+  handle('checkpoints:restore', async (id: string) => {
+    const result = await checkpoints.restore(id)
+    index.invalidate()
+    // Editors are holding the old text; they have to be told to re-read.
+    send('files:changed', true)
+    return result
+  })
+  handle('checkpoints:remove', async (id: string) => {
+    await checkpoints.remove(id)
+    return true
+  })
 
   /* ---------------- voice ---------------- */
 

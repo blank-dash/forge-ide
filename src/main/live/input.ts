@@ -164,8 +164,16 @@ class WindowsInput implements InputBackend {
     const child = this.child
     this.child = null
     if (!child || child.killed) return
-    // Ask first, so the helper can release any held modifier keys.
-    child.stdin.write('{"op":"quit"}\n', () => child.kill())
+
+    try {
+      // Asked first, so the helper releases any modifier key it is holding
+      // down — a stuck Ctrl outlives this process and is miserable to diagnose.
+      child.stdin.write('{"op":"quit"}\n', () => child.kill())
+    } catch {
+      // Writing to a pipe whose far end has already gone throws, and this runs
+      // on the shutdown path where an exception can stop the app exiting at all.
+      child.kill()
+    }
   }
 }
 

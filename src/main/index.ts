@@ -5,6 +5,14 @@ import { buildMenu } from './menu'
 import { folderFromArgv, loadWindowState, trackWindowState } from './window-state'
 
 let mainWindow: BrowserWindow | null = null
+/**
+ * Set the moment quitting begins.
+ *
+ * Everything below treats an error differently once this is true. While the app
+ * is running, a failing subsystem should not take the editor down with it; while
+ * it is closing, nothing at all may keep it alive.
+ */
+let quitting = false
 let services: Services | null = null
 let untrackWindow: (() => void) | null = null
 
@@ -16,6 +24,12 @@ const getWindow = (): BrowserWindow | null =>
  * app down silently. Surface it in the UI and keep running — every long-lived
  * subsystem here (MCP servers, shells, provider streams) can fail
  * independently without the editor needing to die.
+ *
+ * Except while quitting. An exception thrown out of the shutdown path used to
+ * land here, be reported to a window that was already closing, and leave the
+ * process running with nothing on screen — invisible to the person who closed
+ * it, and holding its own files open, so an installer could neither close it
+ * nor replace them.
  */
 function installCrashGuards(): void {
   const report = (label: string, error: unknown): void => {
@@ -29,8 +43,17 @@ function installCrashGuards(): void {
     })
   }
 
-  process.on('uncaughtException', (error) => report('Unexpected error', error))
-  process.on('unhandledRejection', (reason) => report('Unhandled rejection', reason))
+  process.on('uncaughtException', (error) => {
+    if (quitting) {
+      console.error('[shutdown] ignored while quitting', error)
+      return
+    }
+    report('Unexpected error', error)
+  })
+  process.on('unhandledRejection', (reason) => {
+    if (quitting) return
+    report('Unhandled rejection', reason)
+  })
 }
 
 /** The app mark, from wherever it lives in this build. */
@@ -201,6 +224,18 @@ if (!app.requestSingleInstanceLock()) {
 
     createWindow()
 
+    /*
+     * Closes itself after a delay, for `npm run check:shutdown`.
+     *
+     * The check has to drive the real binary — the failure it guards against
+     * lives in the interaction between the crash guard, the quit handlers and a
+     * dozen subsystems, none of which a stub would reproduce.
+     */
+    const closeAfter = Number(process.env.FORGE_CLOSE_AFTER_MS)
+    if (Number.isFinite(closeAfter) && closeAfter > 0) {
+      setTimeout(() => getWindow()?.close(), closeAfter).unref?.()
+    }
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
@@ -211,7 +246,22 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('before-quit', () => {
+    quitting = true
     services?.dispose()
     services = null
+
+    /*
+     * A backstop, because "the window is gone" must mean "the process is gone".
+     *
+     * Shutdown touches a dozen subsystems — child processes, native views,
+     * timers, sockets — and any one of them can hold the loop open. When that
+     * happens there is nothing on screen to close and no way to notice, until
+     * an installer refuses to overwrite files the invisible process is holding.
+     * Three seconds is far longer than an orderly exit needs.
+     */
+    setTimeout(() => {
+      console.error('[shutdown] took too long; exiting anyway')
+      app.exit(0)
+    }, 3000).unref?.()
   })
 }

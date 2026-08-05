@@ -29,6 +29,9 @@ export default function Dashboard() {
 
   const [sessions, setSessions] = useState<Row[]>([])
   const [tasks, setTasks] = useState<Array<{ enabled: boolean; nextRunAt: number | null }>>([])
+  const [history, setHistory] = useState<
+    Array<{ date: string; costUsd: number; input: number; output: number; turns: number }>
+  >([])
 
   useEffect(() => {
     void window.forge.sessions
@@ -39,6 +42,10 @@ export default function Dashboard() {
       .list()
       .then(setTasks)
       .catch(() => setTasks([]))
+    void window.forge.usage
+      .history()
+      .then(setHistory)
+      .catch(() => setHistory([]))
     // Re-read whenever something finishes, so the counts are not stale.
   }, [liveSessions.length, changes.length])
 
@@ -170,6 +177,13 @@ export default function Dashboard() {
         />
       </div>
 
+      {history.length > 0 && (
+        <>
+          <h2 className="dashboard-subhead">{t('Spending')}</h2>
+          <SpendChart days={history} />
+        </>
+      )}
+
       <h2 className="dashboard-subhead">{t('Recent')}</h2>
 
       {sessions.length === 0 ? (
@@ -236,6 +250,39 @@ function nextTaskHint(
 
   const hours = Math.round(minutes / 60)
   return hours < 24 ? `${t('next in')} ${hours} ${t('h')}` : t('next tomorrow')
+}
+
+/**
+ * Two weeks of spending, as bars.
+ *
+ * No axis and no legend: the question this answers is "is today unlike the
+ * other days", which a shape answers faster than numbers would.
+ */
+function SpendChart({
+  days
+}: {
+  days: Array<{ date: string; costUsd: number; turns: number }>
+}) {
+  const recent = days.slice(0, 14).reverse()
+  const peak = Math.max(...recent.map((day) => day.costUsd), 0.0001)
+  const total = recent.reduce((sum, day) => sum + day.costUsd, 0)
+
+  return (
+    <div className="spend">
+      <div className="spend-bars">
+        {recent.map((day) => (
+          <div className="spend-col" key={day.date} title={`${day.date} · $${day.costUsd.toFixed(4)} · ${day.turns} turns`}>
+            <div
+              className="spend-bar"
+              style={{ height: `${Math.max(2, (day.costUsd / peak) * 100)}%` }}
+            />
+            <span className="spend-day">{day.date.slice(8)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="spend-total">${total.toFixed(2)} over {recent.length} days</div>
+    </div>
+  )
 }
 
 function compact(value: number): string {

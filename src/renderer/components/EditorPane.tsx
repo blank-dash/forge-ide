@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import Editor, { type Monaco } from '@monaco-editor/react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
 import { useStore } from '../store'
 
 export default function EditorPane(): JSX.Element {
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const tabs = useStore((state) => state.tabs)
   const activeTab = useStore((state) => state.activeTab)
   const settings = useStore((state) => state.settings)
@@ -99,6 +100,62 @@ export default function EditorPane(): JSX.Element {
     })
   }, [])
 
+  /*
+   * Two things the editor gains over a plain text box.
+   *
+   * Ctrl+L quotes the selection into the composer, so a question about this
+   * code does not start with a copy and paste. Ctrl+K asks for the change
+   * directly, and the agent edits the file through its ordinary tools — the
+   * same permission rules apply as anywhere else, which is why it is a message
+   * rather than a private path that writes behind them.
+   */
+  const onMount = useCallback<OnMount>((editor, monaco) => {
+    editorRef.current = editor
+
+    const selectionContext = (): string | null => {
+      const selection = editor.getSelection()
+      const model = editor.getModel()
+      if (!selection || !model || selection.isEmpty()) return null
+
+      const path = useStore.getState().activeTab
+      const text = model.getValueInRange(selection)
+      const fence = String.fromCharCode(96, 96, 96)
+      return (
+        `${path}:${selection.startLineNumber}-${selection.endLineNumber}` +
+        `${String.fromCharCode(10)}${fence}${String.fromCharCode(10)}${text}` +
+        `${String.fromCharCode(10)}${fence}`
+      )
+    }
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, () => {
+      const context = selectionContext()
+      if (!context) return
+      useStore.getState().appendToComposer(context)
+    })
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => {
+      const context = selectionContext()
+      const path = useStore.getState().activeTab
+      useStore
+        .getState()
+        .appendToComposer(
+          context
+            ? `Change this, and only this:${String.fromCharCode(10)}${String.fromCharCode(10)}${context}${String.fromCharCode(10)}${String.fromCharCode(10)}`
+            : `In ${path}: `
+        )
+    })
+  }, [])
+
+  // The outline picker and search results ask the editor to scroll somewhere.
+  const revealRequest = useStore((state) => state.revealRequest)
+  useEffect(() => {
+    if (!revealRequest || !editorRef.current) return
+    const editor = editorRef.current
+    editor.revealLineInCenter(revealRequest.line)
+    editor.setPosition({ lineNumber: revealRequest.line, column: 1 })
+    editor.focus()
+  }, [revealRequest])
+
   if (!current) {
     return (
       <div className="pane editor-pane">
@@ -147,6 +204,7 @@ export default function EditorPane(): JSX.Element {
           language={languageFor(current.path)}
           theme={settings.theme === 'light' ? 'forge-light' : 'forge-dark'}
           beforeMount={beforeMount}
+          onMount={onMount}
           onChange={(value) => updateTab(current.path, value ?? '')}
           options={{
             fontSize: settings.editorFontSize,

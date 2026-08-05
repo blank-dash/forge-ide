@@ -21,7 +21,8 @@
     "check:browser": "esbuild scripts/browser-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/browser-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && electron out/browser-check.mjs",
     "check:input": "esbuild scripts/input-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/input-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/input-check.mjs",
     "check:live": "esbuild scripts/live-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/live-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && electron out/live-check.mjs",
-    "check:speech": "esbuild scripts/speech-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/speech-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/speech-check.mjs"
+    "check:speech": "esbuild scripts/speech-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/speech-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/speech-check.mjs",
+    "check:shutdown": "electron-vite build && esbuild scripts/shutdown-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/shutdown-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/shutdown-check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

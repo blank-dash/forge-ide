@@ -98,6 +98,10 @@ function makeSession(options: {
     mcpTools: () => (options.tools ?? []) as never,
     skillTool: () => null,
     hostTools: () => [],
+    recordUsage: () => undefined,
+    beforeWrite: async () => undefined,
+    turnBegan: () => undefined,
+    turnEnded: () => undefined,
     skillCatalogue: () => '',
     gitContext: async () => '',
     persist: () => undefined

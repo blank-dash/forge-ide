@@ -43,6 +43,19 @@ export default function Composer() {
   const totals = useStore((state) => state.totals)
   const changeCount = useStore((state) => state.changes.length)
   const live = useStore((state) => state.live)
+  const composerInsert = useStore((state) => state.composerInsert)
+
+  // Text arriving from the editor's Ctrl+L and Ctrl+K. Appended rather than
+  // replacing, so a half-typed question survives.
+  useEffect(() => {
+    if (!composerInsert) return
+    setValue((current) =>
+      current.trim() ? `${current.trimEnd()}
+
+${composerInsert.text}` : composerInsert.text
+    )
+    textarea.current?.focus()
+  }, [composerInsert])
 
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
@@ -306,9 +319,32 @@ export default function Composer() {
       : null
   }, [value])
 
+  /**
+   * Saved prompts appear beside the built-in commands.
+   *
+   * They put their text in the box rather than sending it, so the usual case —
+   * a saved prompt plus a sentence of specifics — takes one keystroke instead
+   * of a copy and paste.
+   */
+  const promptCommands = useMemo<SlashCommand[]>(
+    () =>
+      settings.prompts.map((prompt) => ({
+        name: `/${prompt.name}`,
+        description: prompt.description || 'Saved prompt',
+        run: () => {
+          setValue(prompt.body)
+          textarea.current?.focus()
+        }
+      })),
+    [settings.prompts]
+  )
+
   const slashMatches = useMemo(
-    () => (slashQuery === null ? [] : commands.filter((c) => c.name.startsWith(slashQuery))),
-    [commands, slashQuery]
+    () =>
+      slashQuery === null
+        ? []
+        : [...commands, ...promptCommands].filter((c) => c.name.startsWith(slashQuery)),
+    [commands, promptCommands, slashQuery]
   )
 
   const fileMatches = useMemo(() => {

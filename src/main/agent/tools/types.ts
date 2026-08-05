@@ -19,6 +19,14 @@ export interface ToolContext {
   changes: ChangeTracker
   requestPermission(request: Omit<PermissionRequest, 'id'>): Promise<boolean>
   notifyFileChanged(absolutePath: string): void
+  /**
+   * Records how a file looked before it is written.
+   *
+   * Called by every tool that changes a file, before it does, and regardless of
+   * the approval mode — the review screen's own record is skipped in `ask` mode
+   * because each diff was already shown, but a turn still has to be undoable.
+   */
+  captureBefore(absolutePath: string): Promise<void>
 }
 
 export interface ToolOutcome {

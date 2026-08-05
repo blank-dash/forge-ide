@@ -128,6 +128,34 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'en',
   displayName: '',
   github: { token: '', login: '', name: '', avatarUrl: '', scopes: [] },
+  prompts: [
+    {
+      id: 'review',
+      name: 'review',
+      description: 'Review the current changes like a careful colleague',
+      body:
+        'Review the uncommitted changes in this workspace. Look for correctness problems ' +
+        'first, then anything that will be hard to maintain. Be specific about files and ' +
+        'lines, and say plainly if something is fine.'
+    },
+    {
+      id: 'explain',
+      name: 'explain',
+      description: 'Explain how something here works',
+      body:
+        'Explain how this part of the codebase works: what the pieces are, how they fit ' +
+        'together, and which decisions are load-bearing. Point at real files.'
+    },
+    {
+      id: 'tests',
+      name: 'tests',
+      description: 'Write tests for what was just changed',
+      body:
+        'Write tests for the code that changed most recently. Cover the failure modes that ' +
+        'would actually happen, not only the happy path, and make each test name say what it ' +
+        'is protecting.'
+    }
+  ],
   voice: {
     inputModel: '',
     inputLanguage: '',

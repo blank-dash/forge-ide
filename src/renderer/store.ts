@@ -62,10 +62,10 @@ export interface SessionView {
   context: { used: number; window: number; estimated: boolean } | null
 }
 
-export type SidePanel = 'explorer' | 'git' | 'sessions'
+export type SidePanel = 'explorer' | 'git' | 'sessions' | 'search'
 export type MainView = 'editor' | 'review'
 /** Which pane the full-window chat view is showing. */
-export type ChatPane = 'chats' | 'dashboard' | 'tasks' | 'browser' | 'live'
+export type ChatPane = 'chats' | 'dashboard' | 'tasks' | 'browser' | 'live' | 'checkpoints'
 
 interface UiState {
   sidebarWidth: number
@@ -79,6 +79,8 @@ interface UiState {
   sidePanel: SidePanel
   mainView: MainView
   chatPane: ChatPane
+  /** Which overlay picker is open, if any. */
+  picker: 'none' | 'files' | 'commands' | 'symbols'
 }
 
 interface State {
@@ -108,6 +110,15 @@ interface State {
   runningTasks: string[]
   /** Live-mode session, or null when nothing is being shared. */
   live: LiveStatus | null
+  /**
+   * A request to scroll the editor somewhere.
+   *
+   * Carries a timestamp because asking for the same line twice must still move
+   * the editor — a bare line number would look unchanged and be ignored.
+   */
+  revealRequest: { line: number; at: number } | null
+  /** Text on its way into the composer from somewhere else. */
+  composerInsert: { text: string; at: number } | null
   git: GitStatus | null
   mcp: McpServerStatus[]
 
@@ -132,6 +143,8 @@ interface State {
   pushError(message: string, detail?: string): void
   dismissError(id: string): void
   dismissNotice(id: string): void
+  /** A one-line message from the app itself, not from the agent. */
+  pushNotice(message: string): void
   clearChat(): void
   loadState(payload: {
     entries: ChatEntry[]
@@ -146,6 +159,15 @@ interface State {
   setLiveSessions(sessions: Array<{ id: string; running: boolean }>): void
   setTaskRunning(taskId: string, running: boolean): void
   setLive(status: LiveStatus | null): void
+  /** Scrolls the open editor to a line, for the outline picker. */
+  revealLine(line: number): void
+  /** Writes the conversation out as Markdown. */
+  exportConversation(): Promise<void>
+  /**
+   * Puts text into the composer from elsewhere — the editor's Ctrl+L and
+   * Ctrl+K, mostly. Carries a stamp so the same text twice still arrives.
+   */
+  appendToComposer(text: string): void
 
   setGit(status: GitStatus | null): void
   setMcp(statuses: McpServerStatus[]): void
@@ -190,6 +212,8 @@ export const useStore = create<State>((set, get) => ({
   liveSessions: [],
   runningTasks: [],
   live: null,
+  revealRequest: null,
+  composerInsert: null,
   git: null,
   mcp: [],
 
@@ -209,7 +233,8 @@ export const useStore = create<State>((set, get) => ({
     settingsSection: 'providers',
     sidePanel: 'explorer',
     mainView: 'editor',
-    chatPane: 'chats'
+    chatPane: 'chats',
+    picker: 'none'
   },
 
   init: (bootstrap) =>
@@ -403,6 +428,11 @@ export const useStore = create<State>((set, get) => ({
   dismissError: (id) => set((state) => ({ errors: state.errors.filter((e) => e.id !== id) })),
   dismissNotice: (id) => set((state) => ({ notices: state.notices.filter((n) => n.id !== id) })),
 
+  pushNotice: (message) =>
+    set((state) => ({
+      notices: [...state.notices.slice(-3), { id: `ui-${Date.now()}-${message.length}`, message }]
+    })),
+
   clearChat: () =>
     set({
       entries: [],
@@ -463,6 +493,17 @@ export const useStore = create<State>((set, get) => ({
     }),
 
   setLive: (live) => set({ live }),
+
+  revealLine: (line) => set({ revealRequest: { line, at: Date.now() } }),
+
+  appendToComposer: (text) => set({ composerInsert: { text, at: Date.now() } }),
+
+  exportConversation: async () => {
+    const state = get()
+    const markdown = conversationMarkdown(state.entries, state.totals)
+    const saved = await window.forge.workspace.exportText(markdown).catch(() => null)
+    if (saved) state.pushNotice(`Saved to ${saved}`)
+  },
 
   setTaskRunning: (taskId, running) =>
     set((state) => ({
@@ -719,4 +760,42 @@ function applyToView(view: SessionView, event: AgentEvent): SessionView {
     default:
       return view
   }
+}
+
+/**
+ * A conversation as Markdown.
+ *
+ * Written for reading and pasting elsewhere, so tool calls are collapsed to one
+ * line each rather than reproduced in full — a transcript of every diff is not
+ * something anyone wants to scroll through, and the files are right there.
+ */
+export function conversationMarkdown(entries: ChatEntry[], totals: TokenUsage): string {
+  const lines: string[] = ['# Conversation', '']
+
+  for (const entry of entries) {
+    lines.push(entry.role === 'user' ? '## You' : '## Agent')
+    if (entry.model) lines.push(`_${entry.model}_`, '')
+
+    for (const block of entry.blocks) {
+      if (block.kind === 'text') lines.push(block.text.trim(), '')
+      else if (block.kind === 'thinking') continue
+      else if (block.kind === 'tool') {
+        const status = block.result?.isError ? 'failed' : 'ok'
+        lines.push(`- \`${block.use.name}\` — ${block.result?.display?.summary ?? status}`, '')
+      }
+    }
+  }
+
+  if (totals.input || totals.output) {
+    lines.push(
+      '---',
+      '',
+      `${totals.input.toLocaleString()} in · ${totals.output.toLocaleString()} out` +
+        (totals.costUsd > 0 ? ` · $${totals.costUsd.toFixed(4)}` : '')
+    )
+  }
+
+  const text = lines.join(String.fromCharCode(10))
+  // Collapses the blank lines that empty tool blocks leave behind.
+  return text.replace(new RegExp('\n{3,}', 'g'), '\n\n')
 }

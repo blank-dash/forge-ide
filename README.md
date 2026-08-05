@@ -241,6 +241,40 @@ inside your repository. Reopen them from the chat sidebar or the History tab.
 Leaving a conversation does not stop it: it keeps working in the background and
 its reply is waiting when you come back.
 
+## Getting around
+
+| | |
+| --- | --- |
+| `Ctrl+P` | Go to file. Fuzzy — type initials, or part of a path. |
+| `Ctrl+Shift+P` | Command palette. Everything the app can do, by name. |
+| `Ctrl+Shift+O` | Go to a symbol in the open file. |
+| `Ctrl+Shift+F` | Search across every file, with results you can click. |
+| `Ctrl+L` | Quote the editor selection into the chat. |
+| `Ctrl+K` | Ask for a change to the selection, in place. |
+
+The matcher ranks rather than filters: typing `cts` finds
+`components/ChatToolStrip.tsx` because those letters begin words, and `store`
+finds `renderer/store.ts` ahead of `store/index.ts` because the file is the
+thing being named.
+
+## Checkpoints
+
+Every turn that changed a file is recorded, and restoring one puts those files
+back to how they were before it — including files it created, which are removed
+again. This is the thing you want after a turn that touched nine files and got
+the shape wrong, and it is not `git checkout`, which would take your own
+uncommitted work with it.
+
+Only the files the agent actually wrote are stored, and only their previous
+contents. It is undo, not version control: forty turns per workspace, then the
+oldest are dropped.
+
+## Prompt library
+
+Prompts you type often, kept where you can reach them. Each appears in the
+composer as a slash command and fills the box rather than sending it, because
+the usual shape is a saved prompt plus a sentence of specifics.
+
 ## Voice
 
 Speak instead of typing, and have replies read back.

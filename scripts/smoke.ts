@@ -18,6 +18,8 @@ import { readSse } from '../src/main/providers/sse'
 import { composeMessage, isLargePaste, tooLarge } from '../src/renderer/attachments'
 import { runManagerTests } from './manager-tests'
 import { runScheduleTests } from './schedule-tests'
+import { runFuzzyTests } from './fuzzy-tests'
+import { runOutlineTests } from './outline-tests'
 import { runSpeechTests } from './speech-tests'
 import { runSchedulerTests } from './scheduler-tests'
 import { runTaskTests } from './task-tests'
@@ -657,6 +659,12 @@ async function serialTest(name: string, fn: () => Promise<void> | void): Promise
 }
 
 await runSessionTests(serialTest)
+
+console.log('symbol outline')
+await runOutlineTests(serialTest)
+
+console.log('fuzzy matching')
+await runFuzzyTests(serialTest)
 
 console.log('speech')
 await runSpeechTests(serialTest)

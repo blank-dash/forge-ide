@@ -2,6 +2,8 @@ import { useCallback, useEffect } from 'react'
 import ChatPanel from './components/ChatPanel'
 import ChatView from './components/ChatView'
 import ConversationList, { startNewConversation } from './components/ConversationList'
+import { CommandPalette, OutlinePicker, QuickOpen } from './components/Pickers'
+import SearchPanel from './components/SearchPanel'
 import EditorPane from './components/EditorPane'
 import ErrorBoundary from './components/ErrorBoundary'
 import FileTree from './components/FileTree'
@@ -22,7 +24,20 @@ const SIDE_PANELS: Array<{ id: SidePanel; label: string; hint: string }> = [
   { id: 'explorer', label: 'Files', hint: 'Explorer' },
   { id: 'git', label: 'Git', hint: 'Source control' },
   { id: 'sessions', label: 'History', hint: 'Saved conversations' },
+  { id: 'search', label: 'Search', hint: 'Search across files (Ctrl+Shift+F)' }
 ]
+
+/** Whichever overlay picker is open. Mounted in both layouts. */
+function Pickers(): JSX.Element | null {
+  const picker = useStore((state) => state.ui.picker)
+  const patchUi = useStore((state) => state.patchUi)
+  const close = (): void => patchUi({ picker: 'none' })
+
+  if (picker === 'files') return <QuickOpen onClose={close} />
+  if (picker === 'commands') return <CommandPalette onClose={close} />
+  if (picker === 'symbols') return <OutlinePicker onClose={close} />
+  return null
+}
 
 export default function App() {
   const ready = useStore((state) => state.ready)
@@ -143,6 +158,13 @@ export default function App() {
         case 'menu:git':
           patchUi({ sidePanel: 'git', sidebarWidth: Math.max(state.ui.sidebarWidth, 240) })
           break
+        case 'menu:picker':
+          patchUi({ picker: payload as 'files' | 'commands' | 'symbols' })
+          break
+        case 'menu:search':
+          await state.saveSettings({ mode: 'agent' })
+          patchUi({ sidePanel: 'search', sidebarWidth: Math.max(state.ui.sidebarWidth, 320) })
+          break
         case 'menu:check-updates':
           patchUi({ settingsOpen: true, settingsSection: 'about' })
           await window.forge.updates.check().catch(() => undefined)
@@ -152,9 +174,45 @@ export default function App() {
     [patchUi],
   )
 
+  /*
+   * The pickers are keyed here rather than in the application menu.
+   *
+   * A menu accelerator fires even while a text box has focus, which for Ctrl+P
+   * and Ctrl+F is wrong — those belong to the field you are typing in. Handling
+   * them in the document lets an input opt out; the menu keeps the shortcuts
+   * that are unambiguous everywhere.
+   */
   useEffect(() => {
-    // Every shortcut lives in the application menu; handling the same keys here
-    // as well would toggle things twice.
+    const onKey = (event: KeyboardEvent): void => {
+      const mod = event.ctrlKey || event.metaKey
+      if (!mod) return
+
+      const key = event.key.toLowerCase()
+      const state = useStore.getState()
+
+      if (event.shiftKey && key === 'p') {
+        event.preventDefault()
+        state.patchUi({ picker: 'commands' })
+      } else if (event.shiftKey && key === 'o') {
+        event.preventDefault()
+        state.patchUi({ picker: 'symbols' })
+      } else if (event.shiftKey && key === 'f') {
+        event.preventDefault()
+        void state.saveSettings({ mode: 'agent' })
+        state.patchUi({ sidePanel: 'search', sidebarWidth: Math.max(state.ui.sidebarWidth, 320) })
+      } else if (!event.shiftKey && key === 'p') {
+        event.preventDefault()
+        state.patchUi({ picker: 'files' })
+      }
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
+    // Every other shortcut lives in the application menu; handling the same
+    // keys here as well would toggle things twice.
     const offMenu = window.forge.menu.on((command, payload) => void runCommand(command, payload))
     const offWorkspace = window.forge.menu.onWorkspaceChanged(() => window.location.reload())
     return () => {
@@ -183,6 +241,8 @@ export default function App() {
         <PermissionDialog />
         <UpdateToast />
         <TaskToast />
+      <Pickers />
+        <Pickers />
         {ui.settingsOpen && (
           <ErrorBoundary label="Settings">
             <SettingsModal />
@@ -220,6 +280,7 @@ export default function App() {
                 {ui.sidePanel === 'explorer' && <FileTree />}
                 {ui.sidePanel === 'git' && <GitPanel />}
                 {ui.sidePanel === 'sessions' && <ConversationList variant="sidebar" />}
+                {ui.sidePanel === 'search' && <SearchPanel />}
               </ErrorBoundary>
             </div>
             <Resizer

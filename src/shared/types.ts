@@ -477,6 +477,8 @@ export interface Settings {
   /** Linked GitHub account. The token is encrypted like a provider key. */
   github: GithubLink
   voice: VoiceSettings
+  /** Reusable prompts, offered under / in the composer. */
+  prompts: SavedPrompt[]
   theme: ThemeName
   accent: string
   /** Zoom applied to the whole window, 0.7–1.6. 1 is native size. */
@@ -496,6 +498,14 @@ export interface Settings {
   /** Panel sizes and which panel was open, so the window comes back as you left it. */
   layout: LayoutState
   recentWorkspaces: string[]
+}
+
+export interface SavedPrompt {
+  id: string
+  /** Typed after a slash, so it is kept short and without spaces. */
+  name: string
+  description: string
+  body: string
 }
 
 export interface VoiceSettings {
@@ -547,7 +557,7 @@ export interface LayoutState {
   chatSidebarWidth: number
   terminalHeight: number
   terminalOpen: boolean
-  sidePanel: 'explorer' | 'git' | 'sessions'
+  sidePanel: 'explorer' | 'git' | 'sessions' | 'search'
 }
 
 /* ------------------------------------------------------------------ */

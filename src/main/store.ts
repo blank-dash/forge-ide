@@ -241,6 +241,7 @@ function migrate(rawInput: Partial<Settings> & LegacySettings): Settings {
     externalRoots: input.externalRoots ?? [],
     layout: { ...DEFAULT_SETTINGS.layout, ...(input.layout ?? {}) },
     voice: { ...DEFAULT_SETTINGS.voice, ...(input.voice ?? {}) },
+    prompts: input.prompts ?? DEFAULT_SETTINGS.prompts,
     github: {
       ...DEFAULT_SETTINGS.github,
       ...(input.github ?? {}),

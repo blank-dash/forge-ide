@@ -62,6 +62,10 @@ function makeManager(): { manager: SessionManager; events: Tagged[]; listChanges
     mcpTools: () => [],
     skillTool: () => null,
     hostTools: () => [],
+    recordUsage: () => undefined,
+    beforeWrite: async () => undefined,
+    turnBegan: () => undefined,
+    turnEnded: () => undefined,
     skillCatalogue: () => '',
     gitContext: async () => '',
     persist: () => undefined
@@ -146,6 +150,10 @@ export async function runManagerTests(
           mcpTools: () => [],
           skillTool: () => null,
     hostTools: () => [],
+    recordUsage: () => undefined,
+    beforeWrite: async () => undefined,
+    turnBegan: () => undefined,
+    turnEnded: () => undefined,
           skillCatalogue: () => '',
           gitContext: async () => '',
           persist: () => undefined

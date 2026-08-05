@@ -99,6 +99,38 @@ export type TaskEvent =
   | { type: 'task_finished'; taskId: string; taskName: string; result: TaskRunResult }
   | { type: 'tasks_changed'; taskName: string }
 
+export interface SearchHit {
+  path: string
+  line: number
+  text: string
+  start: number
+  end: number
+}
+
+export interface SearchResult {
+  hits: SearchHit[]
+  truncated: boolean
+  scanned: number
+}
+
+export interface UsageDay {
+  date: string
+  input: number
+  output: number
+  cacheRead: number
+  reasoning: number
+  costUsd: number
+  turns: number
+}
+
+export interface Checkpoint {
+  id: string
+  sessionId: string
+  label: string
+  createdAt: number
+  files: Array<{ path: string; existed: boolean }>
+}
+
 export interface LiveSource {
   id: string
   name: string
@@ -192,7 +224,10 @@ const api = {
     pickPaths: (kind: 'files' | 'folder') => call<string[]>('fs:pick', kind),
     list: (relative: string) => call<FileEntry[]>('fs:list', relative),
     read: (relative: string) => call<string>('fs:read', relative),
-    write: (relative: string, content: string) => call<boolean>('fs:write', relative, content)
+    write: (relative: string, content: string) => call<boolean>('fs:write', relative, content),
+    /** Saves text wherever the user chooses; null when they cancel. */
+    exportText: (text: string, suggested = 'conversation.md') =>
+      call<string | null>('fs:export', { text, suggested })
   },
 
   agent: {
@@ -220,6 +255,27 @@ const api = {
       subscribe('permission:cancel', handler),
     respondPermission: (id: string, decision: PermissionDecision) =>
       ipcRenderer.send('permission:respond', { id, decision })
+  },
+
+  index: {
+    /** Every file in the workspace, for quick open. Cached in the main process. */
+    files: () => call<string[]>('index:files'),
+    refresh: () => call<string[]>('index:refresh'),
+    search: (query: string, options: { regex?: boolean; caseSensitive?: boolean; include?: string } = {}) =>
+      call<SearchResult>('index:search', { query, ...options }),
+    onFilesChanged: (handler: () => void) => subscribe('files:changed', handler)
+  },
+
+  usage: {
+    /** Spending by day, newest first. */
+    history: () => call<UsageDay[]>('usage:history')
+  },
+
+  checkpoints: {
+    list: () => call<Checkpoint[]>('checkpoints:list'),
+    restore: (id: string) => call<{ restored: number; problems: string[] }>('checkpoints:restore', id),
+    remove: (id: string) => call<boolean>('checkpoints:remove', id),
+    onChanged: (handler: () => void) => subscribe('checkpoints:changed', handler)
   },
 
   voice: {
@@ -357,7 +413,9 @@ const api = {
         'menu:toggle-terminal',
         'menu:review',
         'menu:git',
-        'menu:check-updates'
+        'menu:check-updates',
+        'menu:picker',
+        'menu:search'
       ]
       const offs = channels.map((channel) =>
         subscribe(channel, (payload: unknown) => handler(channel, payload))
