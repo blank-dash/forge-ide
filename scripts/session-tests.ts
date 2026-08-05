@@ -87,6 +87,7 @@ function makeSession(options: {
     askUser: options.askUser ?? (async () => ({ action: 'allow' })),
     mcpTools: () => [],
     skillTool: () => null,
+    hostTools: () => [],
     skillCatalogue: () => '',
     gitContext: async () => '',
     persist: () => undefined

@@ -31,9 +31,17 @@ export const BUILTIN_TOOLS = [
 export function activeTools(
   mcpTools: AnyTool[],
   skillTool: AnyTool | null,
-  readOnlyOnly: boolean
+  readOnlyOnly: boolean,
+  hostTools: AnyTool[] = []
 ): AnyTool[] {
-  const all = [...BUILTIN_TOOLS, ...(skillTool ? [skillTool] : []), ...mcpTools]
+  const all = [
+    ...BUILTIN_TOOLS,
+    ...(skillTool ? [skillTool] : []),
+    // Tools that need something only the main process holds — the browser view,
+    // today — so they cannot be declared statically beside the file tools.
+    ...hostTools,
+    ...mcpTools
+  ]
   return all.filter((tool) => !readOnlyOnly || tool.readOnly)
 }
 

@@ -10,6 +10,8 @@ export interface RecordInput {
   /** File content before this edit; null when the file did not exist. */
   before: string | null
   after: string
+  /** The file was removed, so rejecting means putting it back. */
+  deleted?: boolean
 }
 
 /**
@@ -62,7 +64,7 @@ export class ChangeTracker {
       id: existing?.id ?? randomUUID(),
       path: input.displayPath,
       absolutePath: input.absolutePath,
-      kind: before === null ? 'create' : 'modify',
+      kind: input.deleted ? 'delete' : before === null ? 'create' : 'modify',
       before,
       after: input.after,
       diff,

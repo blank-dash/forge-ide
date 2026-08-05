@@ -3,6 +3,11 @@
  * Kept free of any runtime imports so both bundles can use it safely.
  */
 
+// Type-only, so it is erased at compile time and adds no runtime dependency.
+import type { Schedule } from './schedule'
+
+export type { Schedule }
+
 /* ------------------------------------------------------------------ */
 /* Providers & models                                                  */
 /* ------------------------------------------------------------------ */
@@ -88,6 +93,14 @@ export interface ToolResultBlock {
   isError: boolean
   /** Structured payload for rich rendering; never sent to the model. */
   display?: ToolDisplay
+  /**
+   * Images the tool produced, e.g. a screenshot.
+   *
+   * Carried alongside the result rather than inside it because only one of the
+   * three provider protocols allows an image inside a tool result. They are
+   * sent as ordinary image blocks in the same user turn, which all three accept.
+   */
+  images?: ImageBlock[]
 }
 
 export interface ImageBlock {
@@ -178,7 +191,9 @@ export interface ToolDisplay {
   body?: string
   /** Unified diff shown with +/- colouring. */
   diff?: string
-  kind: 'text' | 'diff' | 'list' | 'shell'
+  /** PNG or JPEG, base64, shown inline when kind is 'image'. */
+  image?: { mediaType: string; data: string }
+  kind: 'text' | 'diff' | 'list' | 'shell' | 'image'
 }
 
 /* ------------------------------------------------------------------ */
@@ -258,6 +273,20 @@ export interface PermissionRequest {
   kind: 'edit' | 'write' | 'shell' | 'external' | 'mcp'
   /** Rule that would be persisted if the user picks "always allow". */
   suggestedRule: string
+  /**
+   * The user configured this exact call to be approved without asking, e.g. an
+   * MCP tool listed in `autoApproveTools`.
+   *
+   * Deliberately not resolved to "allow" before this point: that standing
+   * consent was given for interactive use, and an unattended run has to be able
+   * to decide for itself whether it still applies.
+   */
+  preApproved?: boolean
+  /**
+   * This destroys something rather than changing it, so "apply edits without
+   * asking" must not cover it.
+   */
+  destructive?: boolean
 }
 
 export type PermissionDecision =
@@ -387,7 +416,14 @@ export type AgentEvent =
     }
   /** A turn announced but never delivered — a retried request. Drop it. */
   | { type: 'turn_abandoned'; messageId: string }
-  | { type: 'idle' }
+  /**
+   * The loop has stopped and `send()` is about to settle.
+   *
+   * The flags exist for callers with nobody watching: a scheduled task cannot
+   * see an abort or a turn-cap cut-off any other way, and would otherwise
+   * record a truncated or cancelled run as a clean success.
+   */
+  | { type: 'idle'; aborted?: boolean; truncated?: boolean }
   /** A message was typed mid-turn and is waiting for the next boundary. */
   | { type: 'queued'; text: string; pending: number }
   /** What the provider's rate-limit headers reported on the last response. */
@@ -438,8 +474,12 @@ export interface Settings {
   language: 'en' | 'ru'
   /** Shown in the profile menu; local only, nothing is sent anywhere. */
   displayName: string
+  /** Linked GitHub account. The token is encrypted like a provider key. */
+  github: GithubLink
   theme: ThemeName
   accent: string
+  /** Zoom applied to the whole window, 0.7–1.6. 1 is native size. */
+  uiScale: number
   editorFontSize: number
   chatFontSize: number
   fontFamily: string
@@ -455,6 +495,23 @@ export interface Settings {
   /** Panel sizes and which panel was open, so the window comes back as you left it. */
   layout: LayoutState
   recentWorkspaces: string[]
+}
+
+/** What is stored for a linked GitHub account. */
+export interface GithubLink {
+  token: string
+  login: string
+  name: string
+  avatarUrl: string
+  scopes: string[]
+}
+
+/** What GitHub reports for a token, before it is stored. */
+export interface GithubAccount {
+  login: string
+  name: string
+  avatarUrl: string
+  scopes: string[]
 }
 
 export interface LayoutState {
@@ -487,6 +544,60 @@ export interface SessionSummary {
 export interface SessionRecord extends SessionSummary {
   messages: Message[]
   totals: TokenUsage
+}
+
+/* ------------------------------------------------------------------ */
+/* Scheduled tasks                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A prompt the agent runs on its own, on a schedule, without anyone watching.
+ *
+ * Unattended runs are held to a stricter contract than a conversation you are
+ * sitting in front of: there is nobody to answer a permission dialog, so what
+ * the task may touch is decided here, when it is written, rather than later.
+ */
+export interface ScheduledTask {
+  id: string
+  name: string
+  /** The message sent to the agent, exactly as if you had typed it. */
+  prompt: string
+  schedule: Schedule
+  enabled: boolean
+  /**
+   * What an unattended run is allowed to do. Anything the agent asks for beyond
+   * this is refused rather than queued for approval nobody will give.
+   */
+  permission: TaskPermission
+  /** Model override; empty means whatever is active at run time. */
+  model: string
+  /** Raise an OS notification when a run finishes. */
+  notify: boolean
+  createdAt: number
+  lastRunAt?: number
+  /** Computed on save and after each run; null when the schedule can never fire. */
+  nextRunAt: number | null
+  lastRun?: TaskRunResult
+}
+
+/**
+ * `read-only` is the default on purpose: a task that can only look is one you
+ * can leave running for a week without thinking about it.
+ */
+export type TaskPermission = 'read-only' | 'edit' | 'full'
+
+export interface TaskRunResult {
+  startedAt: number
+  durationMs: number
+  /** `truncated` means it hit the tool-round cap with work still to do. */
+  status: 'ok' | 'error' | 'cancelled' | 'truncated'
+  /** The agent's closing message, trimmed for the list. */
+  summary: string
+  /** Present when status is 'error'. */
+  error?: string
+  usage: TokenUsage
+  /** Conversation the run happened in, so it can be opened and read in full. */
+  sessionId: string
 }
 
 export interface ProviderTestResult {

@@ -127,8 +127,10 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledSkills: [],
   language: 'en',
   displayName: '',
+  github: { token: '', login: '', name: '', avatarUrl: '', scopes: [] },
   theme: 'warm-dark',
   accent: '#d97757',
+  uiScale: 1,
   editorFontSize: 13,
   chatFontSize: 13,
   // Ships with the app, so this never falls through to whatever the system has.

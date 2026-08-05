@@ -54,6 +54,10 @@ export function evaluatePermission(input: PermissionInput): Verdict {
 
     case 'edit':
     case 'write':
+      // "Apply edits without asking" is consent to have work done, not consent
+      // to have work destroyed. A deletion cannot be undone from the review
+      // screen, so it always goes to whoever is answering.
+      if (request.destructive) return 'ask'
       if (input.editApproval === 'auto') return 'allow'
       return matchesAny(input.allowRules, request.toolName, target) ? 'allow' : 'ask'
   }

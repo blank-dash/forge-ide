@@ -1,7 +1,5 @@
 type Props = {
   size?: number
-  /** Spins and pulses — used as the thinking indicator. */
-  busy?: boolean
   className?: string
 }
 
@@ -12,16 +10,17 @@ let seed = 0
  * glowing caret bar on near-black.
  *
  * Drawn as SVG rather than shown from the PNG so it stays sharp at 14px in the
- * title bar and can animate without a second asset.
+ * title bar. It never animates: the working indicator is Spinner, which reads
+ * far better at this size than a rotating logo.
  */
-export default function BrandMark({ size = 16, busy = false, className }: Props) {
+export default function BrandMark({ size = 16, className }: Props) {
   // Gradient and filter ids must be unique per instance or the first one on the
   // page wins for all of them.
   const id = `mark-${(seed += 1)}`
 
   return (
     <svg
-      className={`brand-svg ${busy ? 'busy' : ''} ${className ?? ''}`}
+      className={`brand-svg ${className ?? ''}`}
       width={size}
       height={size}
       viewBox="0 0 512 512"

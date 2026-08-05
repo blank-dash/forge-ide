@@ -122,6 +122,15 @@ async function adoptArgvFolder(argv: string[]): Promise<void> {
   getWindow()?.webContents.send('workspace:changed', folder)
 }
 
+/*
+ * Windows ties a toast notification to an Application User Model ID. Without
+ * this call the OS cannot match a notification to the app that raised it, and
+ * scheduled-task notifications either never appear or appear unattributed.
+ * It must match electron-builder's `build.appId`, which is what the installed
+ * Start Menu shortcut carries.
+ */
+app.setAppUserModelId('dev.forge.ide')
+
 // A build run from source gets its own profile. Without this it fights the
 // installed app for the single-instance lock — the source build just exits,
 // silently and confusingly — and the two would share one settings file.

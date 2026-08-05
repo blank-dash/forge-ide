@@ -1,5 +1,7 @@
 import { useStore } from '../store'
 import ProfileMenu from './ProfileMenu'
+import { LiveIndicator } from './LivePane'
+import Spinner from './Spinner'
 
 export default function StatusBar() {
   const bootstrap = useStore((state) => state.bootstrap)
@@ -12,6 +14,11 @@ export default function StatusBar() {
   const mcp = useStore((state) => state.mcp)
   const changes = useStore((state) => state.changes)
   const patchUi = useStore((state) => state.patchUi)
+  const sessionId = useStore((state) => state.sessionId)
+  const liveSessions = useStore((state) => state.liveSessions)
+
+  // Conversations mid-turn other than the one on screen.
+  const backgroundRunning = liveSessions.filter((id) => id !== sessionId).length
 
   const current = tabs.find((tab) => tab.path === activeTab)
   const dirty = tabs.filter((tab) => tab.content !== tab.savedContent).length
@@ -20,6 +27,8 @@ export default function StatusBar() {
 
   return (
     <div className="statusbar">
+      <ProfileMenu />
+
       <button
         className="status-settings"
         onClick={() => patchUi({ settingsOpen: true })}
@@ -31,18 +40,41 @@ export default function StatusBar() {
       <button onClick={() => patchUi({ sidePanel: 'explorer' })}>{bootstrap?.workspaceName}</button>
 
       {git?.isRepo && (
-        <button onClick={() => patchUi({ sidePanel: 'git', sidebarWidth: 260 })} title="Source control">
+        <button
+          onClick={() => patchUi({ sidePanel: 'git', sidebarWidth: 260 })}
+          title="Source control"
+        >
           ⑂ {git.branch}
           {git.files.length > 0 ? ` ·${git.files.length}` : ''}
         </button>
       )}
 
-      {current && <span>{current.path}</span>}
+      {current && (
+        <span className="status-path" title={current.path}>
+          {baseName(current.path)}
+        </span>
+      )}
       {dirty > 0 && <span style={{ color: 'var(--accent)' }}>{dirty} unsaved</span>}
 
       <span className="sep" />
 
-      {running && <span className="live">● working</span>}
+      <LiveIndicator />
+
+      {running && (
+        <span className="live">
+          <Spinner /> working
+        </span>
+      )}
+
+      {backgroundRunning > 0 && (
+        <button
+          className="live"
+          onClick={() => patchUi({ sidePanel: 'sessions', sidebarWidth: 260 })}
+          title="Conversations working in the background"
+        >
+          +{backgroundRunning} in background
+        </button>
+      )}
 
       {changes.length > 0 && (
         <button
@@ -109,10 +141,14 @@ export default function StatusBar() {
       >
         v{bootstrap?.appVersion ?? '—'}
       </button>
-
-      <ProfileMenu />
     </div>
   )
+}
+
+/** The file name alone; the full path is on the tooltip. */
+function baseName(path: string): string {
+  const parts = path.split(/[\/]/)
+  return parts[parts.length - 1] || path
 }
 
 function compact(value: number): string {

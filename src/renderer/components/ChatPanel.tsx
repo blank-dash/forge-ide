@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import ChatMessage from './ChatMessage'
 import Composer from './Composer'
-import { syncSessionId } from './ConversationList'
+import { startNewConversation } from './ConversationList'
 import { useT } from '../i18n'
 
 export default function ChatPanel() {
@@ -47,11 +47,7 @@ export default function ChatPanel() {
         <button
           className="icon-btn"
           title={t('New conversation')}
-          onClick={async () => {
-            await window.forge.agent.reset()
-            useStore.getState().clearChat()
-            await syncSessionId()
-          }}
+          onClick={() => void startNewConversation()}
         >
           {t('+ new')}
         </button>
@@ -111,8 +107,8 @@ function EmptyState() {
       <div className="empty-hint" style={{ lineHeight: 1.75 }}>
         <strong style={{ color: 'var(--fg-1)' }}>No model connected yet.</strong>
         <br />
-        Add an API key for any provider — Anthropic, OpenAI, Gemini, OpenRouter, a local
-        Ollama/LM Studio server, or any custom OpenAI-compatible endpoint.
+        Add an API key for any provider — Anthropic, OpenAI, Gemini, OpenRouter, a local Ollama/LM
+        Studio server, or any custom OpenAI-compatible endpoint.
         <br />
         <br />
         <button
@@ -129,13 +125,13 @@ function EmptyState() {
     <div className="empty-hint" style={{ lineHeight: 1.75 }}>
       {readOnly ? (
         <>
-          <strong style={{ color: 'var(--fg-1)' }}>Read-only.</strong> The agent can read and
-          search but not change anything. Turn it off below when you want it to work.
+          <strong style={{ color: 'var(--fg-1)' }}>Read-only.</strong> The agent can read and search
+          but not change anything. Turn it off below when you want it to work.
         </>
       ) : (
         <>
-          Describe a change and the agent will make it. Changes land in the review screen so you
-          can keep or revert each file.
+          Describe a change and the agent will make it. Changes land in the review screen so you can
+          keep or revert each file.
         </>
       )}
       <br />

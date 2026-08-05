@@ -1,6 +1,7 @@
 import { useStore } from '../store'
 import { useT } from '../i18n'
 import BrandMark from './BrandMark'
+import Spinner from './Spinner'
 
 export default function TitleBar() {
   const t = useT()
@@ -22,8 +23,9 @@ export default function TitleBar() {
   return (
     <div className="titlebar">
       <div className="brand">
-        <BrandMark size={16} busy={running} />
+        <BrandMark size={16} />
         Forge
+        {running && <Spinner className="brand-spinner" />}
       </div>
 
       <button className="workspace-btn" onClick={pickFolder} title="Open a different folder">

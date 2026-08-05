@@ -15,6 +15,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import AttachmentStrip from './AttachmentStrip'
 import ContextMeter from './ContextMeter'
+import { startNewConversation } from './ConversationList'
 import EffortPicker from './EffortPicker'
 import Menu from './Menu'
 import ModelPicker from './ModelPicker'
@@ -37,7 +38,6 @@ export default function Composer() {
   const running = useStore((state) => state.running)
   const settings = useStore((state) => state.settings)
   const saveSettings = useStore((state) => state.saveSettings)
-  const clearChat = useStore((state) => state.clearChat)
   const patchUi = useStore((state) => state.patchUi)
   const totals = useStore((state) => state.totals)
   const changeCount = useStore((state) => state.changes.length)
@@ -77,29 +77,24 @@ export default function Composer() {
   }, [])
 
   /** Shared by paste and drop: images are embedded, anything else is a path. */
-  const ingestFiles = useCallback(
-    async (files: File[]): Promise<Attachment[]> => {
-      const built = await Promise.all(
-        files.map(async (file) => {
-          const path = window.forge.pathForFile(file)
-          // An image with no path is a clipboard bitmap — a screenshot. One
-          // with a path could go either way, and seeing it beats reading it.
-          if (isImage(file)) return toImageAttachment(file)
-          if (path) return toFileAttachment(file, path)
-          return null
-        })
-      )
+  const ingestFiles = useCallback(async (files: File[]): Promise<Attachment[]> => {
+    const built = await Promise.all(
+      files.map(async (file) => {
+        const path = window.forge.pathForFile(file)
+        // An image with no path is a clipboard bitmap — a screenshot. One
+        // with a path could go either way, and seeing it beats reading it.
+        if (isImage(file)) return toImageAttachment(file)
+        if (path) return toFileAttachment(file, path)
+        return null
+      })
+    )
 
-      const usable = built.filter((entry): entry is Attachment => entry !== null)
-      if (usable.length < files.length) {
-        useStore
-          .getState()
-          .pushError('Some items could not be attached — they had no file on disk.')
-      }
-      return usable
-    },
-    []
-  )
+    const usable = built.filter((entry): entry is Attachment => entry !== null)
+    if (usable.length < files.length) {
+      useStore.getState().pushError('Some items could not be attached — they had no file on disk.')
+    }
+    return usable
+  }, [])
 
   const onPaste = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -156,7 +151,10 @@ export default function Composer() {
       const usable = pending.filter((entry) => !tooLarge(entry))
       const dropped = pending.length - usable.length
 
-      const payload = composeMessage(text, visionOk ? usable : usable.filter((e) => e.kind !== 'image'))
+      const payload = composeMessage(
+        text,
+        visionOk ? usable : usable.filter((e) => e.kind !== 'image')
+      )
       if (!payload.text.trim() && payload.images.length === 0) return
 
       useStore.getState().pushUser(payload.text, usable)
@@ -171,7 +169,11 @@ export default function Composer() {
       }
 
       try {
-        await window.forge.agent.send(payload.text, payload.images)
+        await window.forge.agent.send(
+          payload.text,
+          payload.images,
+          useStore.getState().sessionId ?? undefined
+        )
       } catch (error) {
         useStore.getState().pushError((error as Error).message)
       }
@@ -242,7 +244,11 @@ export default function Composer() {
         description: 'Browse saved conversations',
         run: () => patchUi({ sidePanel: 'sessions' })
       },
-      { name: '/settings', description: 'Open settings', run: () => patchUi({ settingsOpen: true }) },
+      {
+        name: '/settings',
+        description: 'Open settings',
+        run: () => patchUi({ settingsOpen: true })
+      },
       {
         name: '/providers',
         description: 'Add or edit an API provider',
@@ -261,10 +267,7 @@ export default function Composer() {
       {
         name: '/clear',
         description: 'Clear the conversation and start fresh',
-        run: async () => {
-          await window.forge.agent.reset()
-          clearChat()
-        }
+        run: () => void startNewConversation()
       },
       {
         name: '/cost',
@@ -288,7 +291,7 @@ export default function Composer() {
           )
       }
     ],
-    [clearChat, patchUi, saveSettings, submit, totals]
+    [patchUi, saveSettings, submit, totals]
   )
 
   /* ---------------- slash and @ menus ---------------- */
@@ -296,7 +299,9 @@ export default function Composer() {
   const slashQuery = value.startsWith('/') && !value.includes(' ') ? value.toLowerCase() : null
   const mention = useMemo(() => {
     const match = /(^|\s)@([^\s@]*)$/.exec(value)
-    return match ? { query: match[2].toLowerCase(), start: value.length - match[2].length - 1 } : null
+    return match
+      ? { query: match[2].toLowerCase(), start: value.length - match[2].length - 1 }
+      : null
   }, [value])
 
   const slashMatches = useMemo(
@@ -306,9 +311,7 @@ export default function Composer() {
 
   const fileMatches = useMemo(() => {
     if (!mention) return []
-    return files
-      .filter((file) => file.toLowerCase().includes(mention.query))
-      .slice(0, 12)
+    return files.filter((file) => file.toLowerCase().includes(mention.query)).slice(0, 12)
   }, [files, mention])
 
   // The file list backs @-mentions; fetched lazily on the first @.
@@ -387,7 +390,7 @@ export default function Composer() {
 
     if (event.key === 'Escape' && running) {
       event.preventDefault()
-      void window.forge.agent.abort()
+      void window.forge.agent.abort(useStore.getState().sessionId ?? undefined)
     }
   }
 
@@ -578,9 +581,21 @@ export default function Composer() {
               value={settings.editApproval}
               onChange={(editApproval) => void saveSettings({ editApproval })}
               options={[
-                { value: 'review', label: t('review changes'), hint: t('Apply, then keep or revert per file') },
-                { value: 'ask', label: t('ask each edit'), hint: t('A dialog with the diff every time') },
-                { value: 'auto', label: t('apply silently'), hint: t('No prompt, no review screen') }
+                {
+                  value: 'review',
+                  label: t('review changes'),
+                  hint: t('Apply, then keep or revert per file')
+                },
+                {
+                  value: 'ask',
+                  label: t('ask each edit'),
+                  hint: t('A dialog with the diff every time')
+                },
+                {
+                  value: 'auto',
+                  label: t('apply silently'),
+                  hint: t('No prompt, no review screen')
+                }
               ]}
             />
 
@@ -591,7 +606,11 @@ export default function Composer() {
               onChange={(commandApproval) => void saveSettings({ commandApproval })}
               options={[
                 { value: 'ask', label: t('commands: ask') },
-                { value: 'auto', label: t('commands: auto'), hint: t('Runs anything without asking') }
+                {
+                  value: 'auto',
+                  label: t('commands: auto'),
+                  hint: t('Runs anything without asking')
+                }
               ]}
             />
           </>
@@ -606,11 +625,27 @@ export default function Composer() {
           onChange={(stance) => void saveSettings({ stance })}
           options={[
             { value: 'default', label: t('style: default'), hint: t('Get the job done') },
-            { value: 'plan', label: t('style: plan'), hint: t('Investigate and propose, change nothing') },
-            { value: 'careful', label: t('style: careful'), hint: t('Small steps, verify each one') },
+            {
+              value: 'plan',
+              label: t('style: plan'),
+              hint: t('Investigate and propose, change nothing')
+            },
+            {
+              value: 'careful',
+              label: t('style: careful'),
+              hint: t('Small steps, verify each one')
+            },
             { value: 'fast', label: t('style: fast'), hint: t('Fewest steps to a working result') },
-            { value: 'explain', label: t('style: explain'), hint: t('Narrate the reasoning as it goes') },
-            { value: 'review', label: t('style: review'), hint: t('Report findings, change nothing') }
+            {
+              value: 'explain',
+              label: t('style: explain'),
+              hint: t('Narrate the reasoning as it goes')
+            },
+            {
+              value: 'review',
+              label: t('style: review'),
+              hint: t('Report findings, change nothing')
+            }
           ]}
         />
 
@@ -633,7 +668,12 @@ export default function Composer() {
         {totals.costUsd > 0 && <span>${totals.costUsd.toFixed(4)}</span>}
 
         {running && (
-          <button className="stop-btn" onClick={() => void window.forge.agent.abort()}>
+          <button
+            className="stop-btn"
+            onClick={() =>
+              void window.forge.agent.abort(useStore.getState().sessionId ?? undefined)
+            }
+          >
             {t('■ stop')}
           </button>
         )}
@@ -663,4 +703,3 @@ function supportsThinking(settings: Settings): boolean {
 function supportsVision(settings: Settings): boolean {
   return activeModel(settings).model?.supportsVision === true
 }
-

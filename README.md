@@ -238,6 +238,75 @@ are blocked outright regardless of settings.
 
 Conversations are saved per workspace in the app's user-data directory — never
 inside your repository. Reopen them from the chat sidebar or the History tab.
+Leaving a conversation does not stop it: it keeps working in the background and
+its reply is waiting when you come back.
+
+## Live mode
+
+Share a screen or a single window with the agent so it can see what you see, and
+optionally let it click and type.
+
+Nothing about it starts on its own. You pick the surface and the access level
+every time, a red dot sits in the status bar for as long as a session is running
+and takes you straight to the stop button, and quitting the app ends it. There is
+no setting that leaves it on.
+
+| Level | What the agent gets |
+| --- | --- |
+| Watch only | One tool: take a screenshot. It cannot touch anything. |
+| Watch and control | Also click, drag, type, press keys and scroll — the real mouse and keyboard, anywhere on the machine. |
+
+The acting tools are not merely refused in a watch-only session; they are not
+given to the model at all, so there is nothing to talk it into. Coordinates are
+in the pixels of the screenshot it was last shown and are mapped back to the
+desktop for it, so clicks land where they look — including on a second monitor.
+A coordinate outside the frame, or one given before it has looked at anything,
+is refused rather than guessed at.
+
+Capture works everywhere. Control is Windows-only so far: it drives `user32`
+through one long-lived helper process rather than a native module, which is the
+kind of dependency that breaks a packaged build.
+
+## Built-in browser
+
+A real browser pane inside the app, for looking at what you are building and for
+the agent to show you a page. It is a native view laid over the window rather
+than an iframe, so sites that refuse to be framed — nearly all of them — load
+normally.
+
+It keeps its own cookies in a separate partition: signing into something here
+cannot reach the app's own state, and nothing about it is stored beside it.
+Typing `localhost:5173` opens `http://localhost:5173`; typing something without
+a dot or a port searches for it instead.
+
+The agent has two tools for it. `open_page` navigates and reads the result back
+as text, bringing the pane to the front so you see what it opened. `read_page`
+re-reads whatever is already there. Opening a page asks permission the first
+time, under the same rule as reaching outside the workspace — which also means a
+scheduled task below full access cannot quietly start fetching URLs.
+
+## Scheduled tasks
+
+A task is a prompt with a clock attached — "summarise what changed today", "check
+the build every morning", "look for TODOs left this week". Each run happens in a
+real conversation you can open and read, and reports back with an OS
+notification when the window is not in front.
+
+Because nobody is there to answer a permission dialog, what a task may touch is
+decided when you write it, not while it runs:
+
+| Level | What it can do |
+| --- | --- |
+| Read only | Looks, never changes. The mutating tools are not offered to the model at all. |
+| Edit files | Writes to the workspace. Cannot run commands or reach outside the folder. |
+| Everything | Runs commands with no approval, on a schedule, whether or not you are there. |
+
+Read only is the default. Schedules are a timer, a daily time, chosen weekdays,
+or a single run — no cron expressions. A run that was missed while the app was
+closed fires once when it reopens, not once for every slot it slept through.
+
+Only the most recent run's transcript is kept per task, so an hourly task cannot
+fill your history and push your own conversations out of it.
 
 ## Project instructions
 

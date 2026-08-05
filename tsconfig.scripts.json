@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "composite": false,
+    "types": ["node"],
+    // The suite covers renderer-side helpers too, so it sees browser globals.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["scripts/**/*.ts"]
+}

@@ -121,7 +121,10 @@ export class SettingsStore {
       providers: this.cache.providers.map((provider) => ({
         ...provider,
         apiKey: encryptKey(provider.apiKey)
-      }))
+      })),
+      // A GitHub token is as sensitive as a provider key, so it gets the same
+      // treatment rather than sitting in plain text beside them.
+      github: { ...this.cache.github, token: encryptKey(this.cache.github.token) }
     }
   }
 }
@@ -159,7 +162,13 @@ function migrateModes(input: Partial<Settings> & LegacySettings): Partial<Settin
 
   switch (input.permissionMode) {
     case 'plan':
-      return { ...input, mode: 'chat', readOnly: true, editApproval: 'review', commandApproval: 'ask' }
+      return {
+        ...input,
+        mode: 'chat',
+        readOnly: true,
+        editApproval: 'review',
+        commandApproval: 'ask'
+      }
     case 'default':
       return { ...input, mode: 'agent', editApproval: 'ask', commandApproval: 'ask' }
     case 'acceptEdits':
@@ -231,6 +240,12 @@ function migrate(rawInput: Partial<Settings> & LegacySettings): Settings {
     denyRules: input.denyRules ?? [],
     externalRoots: input.externalRoots ?? [],
     layout: { ...DEFAULT_SETTINGS.layout, ...(input.layout ?? {}) },
+    github: {
+      ...DEFAULT_SETTINGS.github,
+      ...(input.github ?? {}),
+      token: decryptKey(input.github?.token ?? ''),
+      scopes: input.github?.scopes ?? []
+    },
     mcpServers: (input.mcpServers ?? []).map((server) => ({
       ...server,
       args: server.args ?? [],

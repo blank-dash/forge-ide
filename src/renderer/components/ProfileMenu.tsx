@@ -16,10 +16,20 @@ export default function ProfileMenu() {
   const patchUi = useStore((state) => state.patchUi)
   const bootstrap = useStore((state) => state.bootstrap)
 
-  const name = settings.displayName.trim() || t('Set your name')
-  const initial = (settings.displayName.trim() || 'F').charAt(0).toUpperCase()
+  // A linked GitHub account is a name the user has already given us, so it
+  // stands in until they set one explicitly.
+  const github = settings.github
+  const chosen = settings.displayName.trim() || github.name.trim() || github.login
+  const name = chosen || t('Set your name')
+  const initial = (chosen || 'F').charAt(0).toUpperCase()
+  const avatar = github.avatarUrl
 
   const items: MenuItem[] = [
+    {
+      icon: '👤',
+      label: t('Account'),
+      onSelect: () => patchUi({ settingsOpen: true, settingsSection: 'account' })
+    },
     {
       icon: '⚙',
       label: t('Settings'),
@@ -69,15 +79,19 @@ export default function ProfileMenu() {
   ]
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="status-profile-wrap">
       <button className="status-profile" onClick={() => setOpen((value) => !value)}>
-        <span className="status-avatar">{initial}</span>
+        {avatar ? (
+          <img className="status-avatar" src={avatar} alt="" />
+        ) : (
+          <span className="status-avatar">{initial}</span>
+        )}
         <span>{name}</span>
       </button>
 
       {open && (
         <Menu
-          align="top-right"
+          align="top-left"
           onClose={() => {
             setOpen(false)
             setEditing(false)
@@ -85,7 +99,11 @@ export default function ProfileMenu() {
           items={items}
           header={
             <div className="menu-account">
-              <span className="menu-avatar">{initial}</span>
+              {avatar ? (
+                <img className="menu-avatar" src={avatar} alt="" />
+              ) : (
+                <span className="menu-avatar">{initial}</span>
+              )}
               {editing ? (
                 <input
                   className="input"

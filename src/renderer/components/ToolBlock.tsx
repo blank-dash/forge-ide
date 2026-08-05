@@ -14,8 +14,11 @@ export default function ToolBlock({ use, result }: Props): JSX.Element {
   const failed = result?.isError === true
   const display = result?.display
 
+  const image = display?.image
   const body = display?.diff ?? display?.body ?? result?.content ?? ''
-  const hasBody = body.trim().length > 0
+  // An image is a body too — otherwise a screenshot tool looks like it produced
+  // nothing and there is no way to expand it.
+  const hasBody = body.trim().length > 0 || image !== undefined
 
   return (
     <div className="tool">
@@ -41,8 +44,18 @@ export default function ToolBlock({ use, result }: Props): JSX.Element {
       </div>
 
       {open && hasBody && (
-        <div className="tool-body">
-          {display?.diff ? renderDiff(display.diff) : body}
+        <div className={`tool-body ${image ? 'tool-body-image' : ''}`}>
+          {image ? (
+            <img
+              className="tool-image"
+              src={`data:${image.mediaType};base64,${image.data}`}
+              alt={display?.summary ?? ''}
+            />
+          ) : display?.diff ? (
+            renderDiff(display.diff)
+          ) : (
+            body
+          )}
         </div>
       )}
     </div>

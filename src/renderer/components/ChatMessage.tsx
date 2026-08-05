@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ChatEntry } from '../store'
 import { useStore } from '../store'
-import BrandMark from './BrandMark'
+import Spinner from './Spinner'
 import Markdown from './Markdown'
 import ToolBlock from './ToolBlock'
 
@@ -53,7 +53,7 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }): JSX.Elemen
 
       {entry.streaming && entry.blocks.length === 0 && (
         <div className="thinking-line">
-          <BrandMark size={15} busy />
+          <Spinner />
           <span>thinking…</span>
         </div>
       )}

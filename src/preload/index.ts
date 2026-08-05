@@ -1,8 +1,9 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import type {
   AgentEvent,
   FileEntry,
   GitCommit,
+  GithubAccount,
   GitStatus,
   McpServerConfig,
   McpServerStatus,
@@ -12,6 +13,8 @@ import type {
   PermissionRequest,
   ProviderConfig,
   ProviderTestResult,
+  ScheduledTask,
+  TaskRunResult,
   SessionRecord,
   SessionSummary,
   Settings,
@@ -81,6 +84,53 @@ export interface Bootstrap {
   updates: UpdateStatus
 }
 
+export interface LiveSession {
+  id: string
+  title: string
+  running: boolean
+  messageCount: number
+}
+
+/** A stored task plus whether it is running right now. */
+export type TaskEntry = ScheduledTask & { running: boolean }
+
+export type TaskEvent =
+  | { type: 'task_started'; taskId: string; taskName: string }
+  | { type: 'task_finished'; taskId: string; taskName: string; result: TaskRunResult }
+  | { type: 'tasks_changed'; taskName: string }
+
+export interface LiveSource {
+  id: string
+  name: string
+  kind: 'screen' | 'window'
+  thumbnail: string
+}
+
+export interface LiveStatus {
+  active: boolean
+  sourceId: string
+  sourceName: string
+  access: 'watch' | 'control'
+  controlUnavailable?: string
+  actions: number
+  startedAt: number
+}
+
+export interface LiveAction {
+  kind: 'move' | 'click' | 'type' | 'key' | 'scroll' | 'drag'
+  detail: string
+  at: number
+}
+
+export interface BrowserState {
+  url: string
+  title: string
+  loading: boolean
+  canGoBack: boolean
+  canGoForward: boolean
+  error?: string
+}
+
 export interface AgentState {
   id: string
   title: string
@@ -93,6 +143,14 @@ export interface AgentState {
 const api = {
   bootstrap: () => call<Bootstrap>('app:bootstrap'),
   openExternal: (url: string) => call<boolean>('app:open-external', url),
+
+  /**
+   * Window zoom. Lives here because `webFrame` is not reachable from the
+   * sandboxed renderer, and scaling the frame beats restyling every rule.
+   */
+  setZoom: (factor: number): void => {
+    webFrame.setZoomFactor(Math.min(1.6, Math.max(0.7, factor)))
+  },
 
   /**
    * Real filesystem path of a File from a paste or drop. `File.path` was
@@ -117,6 +175,11 @@ const api = {
     onChanged: (handler: (settings: Settings) => void) => subscribe('settings:changed', handler)
   },
 
+  account: {
+    /** Confirms a GitHub token and reports the account behind it. */
+    verifyGithub: (token: string) => call<GithubAccount>('account:verify-github', token)
+  },
+
   providers: {
     test: (provider: ProviderConfig) => call<ProviderTestResult>('provider:test', provider),
     listModels: (provider: ProviderConfig) => call<string[]>('provider:models', provider)
@@ -133,12 +196,23 @@ const api = {
   },
 
   agent: {
-    send: (text: string, images: Array<{ mediaType: string; data: string }> = []) =>
-      call<boolean>('agent:send', { text, images }),
-    abort: () => call<boolean>('agent:abort'),
-    reset: () => call<boolean>('agent:reset'),
-    state: () => call<AgentState>('agent:state'),
-    onEvent: (handler: (event: AgentEvent) => void) => subscribe('agent:event', handler),
+    /** Omitting sessionId targets the active conversation. */
+    send: (
+      text: string,
+      images: Array<{ mediaType: string; data: string }> = [],
+      sessionId?: string
+    ) => call<string>('agent:send', { text, images, sessionId }),
+    abort: (sessionId?: string) => call<boolean>('agent:abort', sessionId),
+    /** Opens a new conversation; existing ones keep running. */
+    create: () => call<string>('agent:new'),
+    activate: (sessionId: string) => call<boolean>('agent:activate', sessionId),
+    close: (sessionId: string) => call<boolean>('agent:close', sessionId),
+    state: (sessionId?: string) => call<AgentState | null>('agent:state', sessionId),
+    live: () => call<LiveSession[]>('agent:live'),
+    onEvent: (handler: (payload: { sessionId: string; event: AgentEvent }) => void) =>
+      subscribe('agent:event', handler),
+    onSessionsChanged: (handler: (sessions: LiveSession[]) => void) =>
+      subscribe('sessions:changed', handler),
     onPermissionRequest: (handler: (request: PermissionRequest) => void) =>
       subscribe('permission:request', handler),
     /** Fires when a pending prompt is withdrawn, e.g. the turn was stopped. */
@@ -148,12 +222,65 @@ const api = {
       ipcRenderer.send('permission:respond', { id, decision })
   },
 
+  live: {
+    sources: () => call<LiveSource[]>('live:sources'),
+    status: () => call<LiveStatus>('live:status'),
+    start: (sourceId: string, access: 'watch' | 'control') =>
+      call<LiveStatus>('live:start', { sourceId, access }),
+    stop: () => call<LiveStatus>('live:stop'),
+    /** One frame as a data URI, for the preview. */
+    frame: () => call<string>('live:frame'),
+    onStatus: (handler: (status: LiveStatus) => void) => subscribe('live:status', handler),
+    onAction: (handler: (action: LiveAction) => void) => subscribe('live:action', handler)
+  },
+
+  browser: {
+    /**
+     * Tells the native view where the pane is and whether it is on screen.
+     *
+     * Bounds are in device-independent pixels, which is not what
+     * getBoundingClientRect returns once the window is zoomed — the caller has
+     * to scale, and `zoomFactor` is here so it can.
+     */
+    layout: (bounds: { x: number; y: number; width: number; height: number }, visible: boolean) =>
+      ipcRenderer.send('browser:layout', { bounds, visible }),
+    zoomFactor: (): number => webFrame.getZoomFactor(),
+    navigate: (url: string) => call<BrowserState>('browser:navigate', url),
+    state: () => call<BrowserState>('browser:state'),
+    back: () => call<boolean>('browser:back'),
+    forward: () => call<boolean>('browser:forward'),
+    reload: () => call<boolean>('browser:reload'),
+    stop: () => call<boolean>('browser:stop'),
+    openExternal: () => call<boolean>('browser:open-external'),
+    clear: () => call<boolean>('browser:clear'),
+    onState: (handler: (state: BrowserState) => void) => subscribe('browser:state', handler),
+    /** The agent opened a page and the pane should come to the front. */
+    onReveal: (handler: () => void) => subscribe('browser:reveal', handler)
+  },
+
+  tasks: {
+    list: () => call<TaskEntry[]>('tasks:list'),
+    /** Creates when the task has no id, updates when it does. */
+    save: (task: Partial<ScheduledTask>) => call<ScheduledTask>('tasks:save', task),
+    remove: (id: string) => call<boolean>('tasks:remove', id),
+    /** Runs now, ignoring the schedule; resolves when the run finishes. */
+    run: (id: string) => call<TaskRunResult | null>('tasks:run', id),
+    onChanged: (handler: (tasks: ScheduledTask[]) => void) => subscribe('tasks:changed', handler),
+    onEvent: (handler: (event: TaskEvent) => void) => subscribe('tasks:event', handler),
+    /** Live agent output from a running task, for showing progress. */
+    onActivity: (handler: (payload: { taskId: string; event: AgentEvent }) => void) =>
+      subscribe('tasks:activity', handler),
+    /** Fires when a notification is clicked; carries the run's conversation. */
+    onOpenSession: (handler: (sessionId: string) => void) =>
+      subscribe('tasks:open-session', handler)
+  },
+
   changes: {
-    list: () => call<PendingChange[]>('changes:list'),
-    accept: (id: string) => call<boolean>('changes:accept', id),
-    acceptAll: () => call<boolean>('changes:acceptAll'),
-    reject: (id: string) => call<boolean>('changes:reject', id),
-    rejectAll: () => call<boolean>('changes:rejectAll')
+    list: (sessionId?: string) => call<PendingChange[]>('changes:list', sessionId),
+    accept: (id: string, sessionId?: string) => call<boolean>('changes:accept', id, sessionId),
+    acceptAll: (sessionId?: string) => call<boolean>('changes:acceptAll', sessionId),
+    reject: (id: string, sessionId?: string) => call<boolean>('changes:reject', id, sessionId),
+    rejectAll: (sessionId?: string) => call<boolean>('changes:rejectAll', sessionId)
   },
 
   git: {
@@ -176,14 +303,13 @@ const api = {
   },
 
   sessions: {
-    list: () => call<SessionSummary[]>('sessions:list'),
+    list: () => call<Array<SessionSummary & { running: boolean; open: boolean }>>('sessions:list'),
     load: (id: string) => call<SessionRecord>('sessions:load', id),
     remove: (id: string) => call<boolean>('sessions:remove', id)
   },
 
   terminal: {
-    create: (cols: number, rows: number) =>
-      call<TerminalHandle>('terminal:create', { cols, rows }),
+    create: (cols: number, rows: number) => call<TerminalHandle>('terminal:create', { cols, rows }),
     write: (id: string, data: string) => ipcRenderer.send('terminal:write', { id, data }),
     resize: (id: string, cols: number, rows: number) =>
       ipcRenderer.send('terminal:resize', { id, cols, rows }),
@@ -227,8 +353,7 @@ const api = {
         for (const off of offs) off()
       }
     },
-    onWorkspaceChanged: (handler: (cwd: string) => void) =>
-      subscribe('workspace:changed', handler)
+    onWorkspaceChanged: (handler: (cwd: string) => void) => subscribe('workspace:changed', handler)
   }
 }
 

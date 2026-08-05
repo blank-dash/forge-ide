@@ -16,6 +16,10 @@ import { findMentionedPaths } from '../src/main/agent/paths'
 import { evaluatePermission, matchesRule, ruleTarget } from '../src/main/agent/permissions'
 import { readSse } from '../src/main/providers/sse'
 import { composeMessage, isLargePaste, tooLarge } from '../src/renderer/attachments'
+import { runManagerTests } from './manager-tests'
+import { runScheduleTests } from './schedule-tests'
+import { runSchedulerTests } from './scheduler-tests'
+import { runTaskTests } from './task-tests'
 import { runSessionTests } from './session-tests'
 
 let passed = 0
@@ -652,6 +656,18 @@ async function serialTest(name: string, fn: () => Promise<void> | void): Promise
 }
 
 await runSessionTests(serialTest)
+
+console.log('schedules')
+await runScheduleTests(serialTest)
+
+console.log('scheduler')
+await runSchedulerTests(serialTest)
+
+console.log('scheduled tasks')
+await runTaskTests(serialTest)
+
+console.log('parallel conversations')
+await runManagerTests(serialTest)
 
 /* ------------------------------------------------------------------ */
 

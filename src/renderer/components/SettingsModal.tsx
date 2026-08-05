@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProviderConfig, Settings } from '@shared/types'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
+import AccountSettings from './AccountSettings'
 import McpSettings from './McpSettings'
 import ProviderEditor from './ProviderEditor'
 import Select from './Select'
 import SkillSettings from './SkillSettings'
 
 const SECTIONS = [
+  { id: 'account', label: 'Account' },
   { id: 'providers', label: 'Providers & models' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp', label: 'MCP servers' },
@@ -88,7 +90,10 @@ export default function SettingsModal() {
     setDraft((current) => ({ ...current, ...partial }))
 
   return (
-    <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+    <div
+      className="overlay"
+      onMouseDown={(event) => event.target === event.currentTarget && close()}
+    >
       <div className="dialog settings">
         <nav className="settings-nav">
           {SECTIONS.map((entry) => (
@@ -175,8 +180,8 @@ export default function SettingsModal() {
                   Read-only — mutating tools are not offered to the model at all
                 </label>
                 <div className="hint" style={{ marginBottom: 12 }}>
-                  A hard boundary: no allow rule can unlock it. Reading a file outside the
-                  workspace still prompts, because that stays your call.
+                  A hard boundary: no allow rule can unlock it. Reading a file outside the workspace
+                  still prompts, because that stays your call.
                 </div>
 
                 <label className="switch">
@@ -261,16 +266,36 @@ export default function SettingsModal() {
                     onChange={(stance) => patch({ stance })}
                     options={[
                       { value: 'default', label: t('style: default'), hint: t('Get the job done') },
-                      { value: 'plan', label: t('style: plan'), hint: t('Investigate and propose, change nothing') },
-                      { value: 'careful', label: t('style: careful'), hint: t('Small steps, verify each one') },
-                      { value: 'fast', label: t('style: fast'), hint: t('Fewest steps to a working result') },
-                      { value: 'explain', label: t('style: explain'), hint: t('Narrate the reasoning as it goes') },
-                      { value: 'review', label: t('style: review'), hint: t('Report findings, change nothing') }
+                      {
+                        value: 'plan',
+                        label: t('style: plan'),
+                        hint: t('Investigate and propose, change nothing')
+                      },
+                      {
+                        value: 'careful',
+                        label: t('style: careful'),
+                        hint: t('Small steps, verify each one')
+                      },
+                      {
+                        value: 'fast',
+                        label: t('style: fast'),
+                        hint: t('Fewest steps to a working result')
+                      },
+                      {
+                        value: 'explain',
+                        label: t('style: explain'),
+                        hint: t('Narrate the reasoning as it goes')
+                      },
+                      {
+                        value: 'review',
+                        label: t('style: review'),
+                        hint: t('Report findings, change nothing')
+                      }
                     ]}
                   />
                   <div className="hint">
-                    Same tools either way; this changes how the agent approaches the work. Plan
-                    and Review will not edit even when edits are allowed.
+                    Same tools either way; this changes how the agent approaches the work. Plan and
+                    Review will not edit even when edits are allowed.
                   </div>
                 </div>
 
@@ -315,9 +340,9 @@ export default function SettingsModal() {
                 </div>
 
                 <div className="hint" style={{ marginTop: -6, marginBottom: 14 }}>
-                  Applies to models flagged as reasoning models. It becomes a thinking-token
-                  budget on Anthropic and Gemini, and <code>reasoning_effort</code> on OpenAI. A
-                  per-model thinking budget overrides it, except at Off.
+                  Applies to models flagged as reasoning models. It becomes a thinking-token budget
+                  on Anthropic and Gemini, and <code>reasoning_effort</code> on OpenAI. A per-model
+                  thinking budget overrides it, except at Off.
                 </div>
 
                 <label className="switch">
@@ -354,6 +379,8 @@ export default function SettingsModal() {
               </>
             )}
 
+            {section === 'account' && <AccountSettings draft={draft} patch={patch} />}
+
             {section === 'appearance' && (
               <>
                 <h3>Appearance</h3>
@@ -367,8 +394,8 @@ export default function SettingsModal() {
                     options={LANGUAGES.map((o) => ({ value: o.id, label: o.label }))}
                   />
                   <div className="hint">
-                    Changes the interface only. The agent answers in whatever language you write
-                    to it in.
+                    Changes the interface only. The agent answers in whatever language you write to
+                    it in.
                   </div>
                 </div>
 
@@ -408,6 +435,26 @@ export default function SettingsModal() {
                   />
                 </div>
 
+                <div className="field">
+                  <label>{t('Interface scale')}</label>
+                  <Select
+                    value={String(draft.uiScale)}
+                    onChange={(value) => patch({ uiScale: Number(value) })}
+                    options={[
+                      { value: '0.8', label: '80%', hint: 'More on screen' },
+                      { value: '0.9', label: '90%' },
+                      { value: '1', label: '100%', hint: 'Native size' },
+                      { value: '1.1', label: '110%' },
+                      { value: '1.25', label: '125%' },
+                      { value: '1.5', label: '150%', hint: 'Large displays' }
+                    ]}
+                  />
+                  <div className="hint">
+                    Zooms the whole window, panels and terminal included, so nothing gets out of
+                    proportion with anything else. Applies as soon as you pick it.
+                  </div>
+                </div>
+
                 <div className="row">
                   <div className="field">
                     <label>Editor font size</label>
@@ -426,7 +473,9 @@ export default function SettingsModal() {
                       className="input"
                       type="number"
                       value={draft.chatFontSize}
-                      onChange={(event) => patch({ chatFontSize: Number(event.target.value) || 13 })}
+                      onChange={(event) =>
+                        patch({ chatFontSize: Number(event.target.value) || 13 })
+                      }
                     />
                   </div>
                 </div>
@@ -590,12 +639,18 @@ function UpdatePanel() {
         {describeUpdate(status)}
       </div>
 
-      {status.notes && <div className="code-box" style={{ marginTop: 8 }}>{status.notes}</div>}
+      {status.notes && (
+        <div className="code-box" style={{ marginTop: 8 }}>
+          {status.notes}
+        </div>
+      )}
     </div>
   )
 }
 
-function describeUpdate(status: NonNullable<ReturnType<typeof useStore.getState>['bootstrap']>['updates']): string {
+function describeUpdate(
+  status: NonNullable<ReturnType<typeof useStore.getState>['bootstrap']>['updates']
+): string {
   switch (status.state) {
     case 'checking':
       return 'Looking for a newer release…'

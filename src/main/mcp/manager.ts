@@ -131,16 +131,20 @@ export class McpManager {
       title: (input) => `${config.name}·${tool.name}(${summarise(input)})`,
 
       run: async (input, ctx) => {
-        if (!autoApproved) {
-          const approved = await ctx.requestPermission({
-            toolName: qualified,
-            kind: 'mcp',
-            title: `${config.name} · ${tool.name}`,
-            detail: `${tool.description || '(no description)'}\n\n${JSON.stringify(input ?? {}, null, 2)}`,
-            suggestedRule: `${qualified}(*)`
-          })
-          if (!approved) throw new ToolError('User rejected the MCP tool call.')
-        }
+        // Always routed through the permission layer, even for a tool the
+        // server config auto-approves. Skipping it outright meant deny rules
+        // were never consulted, and an unattended scheduled task had no way to
+        // refuse an MCP call that its permission level forbids — MCP servers
+        // can do anything, shell execution included.
+        const approved = await ctx.requestPermission({
+          toolName: qualified,
+          kind: 'mcp',
+          title: `${config.name} · ${tool.name}`,
+          detail: `${tool.description || '(no description)'}\n\n${JSON.stringify(input ?? {}, null, 2)}`,
+          suggestedRule: `${qualified}(*)`,
+          preApproved: autoApproved
+        })
+        if (!approved) throw new ToolError('User rejected the MCP tool call.')
 
         const entry = this.entries.get(config.id)
         if (!entry || entry.status.state !== 'ready') {

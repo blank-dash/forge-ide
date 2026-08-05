@@ -44,6 +44,8 @@ export interface SessionDeps {
   mcpTools(): ToolDef<Record<string, never>>[]
   /** The `use_skill` tool, or null when the library is empty. */
   skillTool(): ToolDef<Record<string, never>> | null
+  /** Tools backed by main-process objects, e.g. the built-in browser. */
+  hostTools(): ToolDef<Record<string, never>>[]
   /** Names and descriptions only — bodies load through the tool. */
   skillCatalogue(): string
   gitContext(): Promise<string>
@@ -120,17 +122,32 @@ export class AgentSession {
       return
     }
 
-    const content: ContentBlock[] = []
-    for (const image of images) {
-      content.push({ type: 'image', mediaType: image.mediaType, data: image.data })
+    // Claimed here rather than in runLoop, which is several awaits away: two
+    // messages sent in the same tick would otherwise both clear the guard above
+    // and start competing loops on one conversation. It also means the sidebar
+    // marks the conversation as working the instant you leave it.
+    this.running = true
+
+    try {
+      const content: ContentBlock[] = []
+      for (const image of images) {
+        content.push({ type: 'image', mediaType: image.mediaType, data: image.data })
+      }
+      content.push({ type: 'text', text })
+
+      this.messages.push({ id: randomUUID(), role: 'user', content, createdAt: Date.now() })
+      if (this.title === 'New session') this.title = deriveTitle(text)
+
+      // A path the user typed themselves needs no approval dialog.
+      for (const granted of await findMentionedPaths(text)) this.grants.add(granted)
+    } catch (error) {
+      // Releasing the claim matters more than the failure itself: leaving it set
+      // would make the conversation permanently refuse to send.
+      this.running = false
+      this.emitError(error)
+      this.deps.emit({ type: 'idle' })
+      return
     }
-    content.push({ type: 'text', text })
-
-    this.messages.push({ id: randomUUID(), role: 'user', content, createdAt: Date.now() })
-    if (this.title === 'New session') this.title = deriveTitle(text)
-
-    // A path the user typed themselves needs no approval dialog.
-    for (const granted of await findMentionedPaths(text)) this.grants.add(granted)
 
     await this.runLoop()
   }
@@ -141,6 +158,7 @@ export class AgentSession {
     this.running = true
     this.controller = new AbortController()
     const signal = this.controller.signal
+    let truncated = false
 
     try {
       for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
@@ -148,7 +166,12 @@ export class AgentSession {
 
         const settings = this.deps.settings()
         const resolved = resolveModel(settings, settings.activeModel)
-        const tools = activeTools(this.deps.mcpTools(), this.deps.skillTool(), settings.readOnly)
+        const tools = activeTools(
+          this.deps.mcpTools(),
+          this.deps.skillTool(),
+          settings.readOnly,
+          this.deps.hostTools()
+        )
 
         const system = await buildSystemPrompt({
           cwd: this.deps.cwd(),
@@ -198,12 +221,15 @@ export class AgentSession {
           // Anything typed mid-turn rides along with the tool results rather
           // than becoming a second consecutive user message, which providers
           // that require strict alternation reject.
-          content: [...results, ...this.drainQueue()],
+          // Images ride as ordinary blocks in the same turn: only Anthropic
+          // accepts one inside a tool result, and this shape works everywhere.
+          content: [...results, ...results.flatMap((entry) => entry.images ?? []), ...this.drainQueue()],
           createdAt: Date.now()
         })
 
         if (signal.aborted) break
         if (turn === MAX_AGENT_TURNS - 1) {
+          truncated = true
           this.deps.emit({
             type: 'notice',
             message: `Stopped after ${MAX_AGENT_TURNS} tool rounds. Send another message to continue.`
@@ -216,7 +242,10 @@ export class AgentSession {
       this.running = false
       this.controller = null
       this.persist()
-      this.deps.emit({ type: 'idle' })
+      // Carried on the event rather than left to be inferred from prose: an
+      // unattended caller has no other way to tell a finished run from one that
+      // was cut short.
+      this.deps.emit({ type: 'idle', aborted: signal.aborted, truncated })
     }
   }
 
@@ -326,12 +355,41 @@ export class AgentSession {
             const stopped = errorResult(use.id, 'Interrupted before this tool ran.')
             this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result: stopped })
           }
-          this.finishTurn(messageId, resolved, blocks, thinking, text, [], usage, 'aborted', startedAt)
+          this.finishTurn(
+            messageId,
+            resolved,
+            blocks,
+            thinking,
+            text,
+            [],
+            usage,
+            'aborted',
+            startedAt
+          )
           return null
         }
 
         const retryable = !emitted && attempt < MAX_ATTEMPTS && isRetryable(error)
-        if (!retryable) throw error
+        if (!retryable) {
+          // Withdraw the turn before giving up. Without this its half-streamed
+          // text stays in any listener's buffer and can be reported as the
+          // answer — text that is not in the saved transcript, because
+          // finishTurn never ran — and the tokens it already burned are lost
+          // from the running total.
+          this.deps.emit({ type: 'turn_abandoned', messageId })
+          if (usage.input > 0 || usage.output > 0) {
+            const spent: TokenUsage = { ...usage, costUsd: computeCost(resolved.model, usage) }
+            this.totals = addUsage(this.totals, spent)
+            this.deps.emit({
+              type: 'turn_end',
+              messageId,
+              usage: spent,
+              stopReason: 'failed',
+              durationMs: Date.now() - startedAt
+            })
+          }
+          throw error
+        }
 
         // Nothing was streamed, so the turn this attempt announced has no
         // content and must not be left behind as an empty bubble.
@@ -346,7 +404,17 @@ export class AgentSession {
         continue
       }
 
-      this.finishTurn(messageId, resolved, blocks, thinking, text, toolUses, usage, stopReason, startedAt)
+      this.finishTurn(
+        messageId,
+        resolved,
+        blocks,
+        thinking,
+        text,
+        toolUses,
+        usage,
+        stopReason,
+        startedAt
+      )
       return { messageId, toolUses }
     }
 
@@ -489,7 +557,8 @@ export class AgentSession {
         toolUseId: use.id,
         content: outcome.content,
         isError: false,
-        display: outcome.display
+        display: outcome.display,
+        images: outcome.images
       }
     } catch (error) {
       if (signal.aborted) return errorResult(use.id, 'Interrupted by the user.')

@@ -10,6 +10,9 @@ import { useT } from '../i18n'
 export default function ReviewPanel() {
   const t = useT()
   const changes = useStore((state) => state.changes)
+  // Review acts on the conversation on screen, not on whichever one the
+  // main process happens to consider active.
+  const sessionId = useStore((state) => state.sessionId) ?? undefined
   const setChanges = useStore((state) => state.setChanges)
   const pushError = useStore((state) => state.pushError)
   const patchUi = useStore((state) => state.patchUi)
@@ -29,7 +32,7 @@ export default function ReviewPanel() {
     setBusy(label)
     try {
       await action()
-      setChanges(await window.forge.changes.list())
+      setChanges(await window.forge.changes.list(sessionId))
     } catch (error) {
       pushError((error as Error).message)
     } finally {
@@ -63,20 +66,21 @@ export default function ReviewPanel() {
         {t('Review')}
         <span className="review-count">
           {changes.length} file{changes.length === 1 ? '' : 's'} ·{' '}
-          <span className="add">+{totals.added}</span> <span className="del">-{totals.removed}</span>
+          <span className="add">+{totals.added}</span>{' '}
+          <span className="del">-{totals.removed}</span>
         </span>
         <span style={{ flex: 1 }} />
         <button
           className="btn btn-primary"
           disabled={busy !== null}
-          onClick={() => void run('all', () => window.forge.changes.acceptAll())}
+          onClick={() => void run('all', () => window.forge.changes.acceptAll(sessionId))}
         >
           {t('Keep all')}
         </button>
         <button
           className="btn btn-danger"
           disabled={busy !== null}
-          onClick={() => void run('all', () => window.forge.changes.rejectAll())}
+          onClick={() => void run('all', () => window.forge.changes.rejectAll(sessionId))}
         >
           {t('Revert all')}
         </button>
@@ -125,14 +129,18 @@ export default function ReviewPanel() {
                 <button
                   className="btn"
                   disabled={busy !== null}
-                  onClick={() => void run(change.id, () => window.forge.changes.accept(change.id))}
+                  onClick={() =>
+                    void run(change.id, () => window.forge.changes.accept(change.id, sessionId))
+                  }
                 >
                   {t('Keep')}
                 </button>
                 <button
                   className="btn btn-danger"
                   disabled={busy !== null}
-                  onClick={() => void run(change.id, () => window.forge.changes.reject(change.id))}
+                  onClick={() =>
+                    void run(change.id, () => window.forge.changes.reject(change.id, sessionId))
+                  }
                 >
                   {t('Revert')}
                 </button>

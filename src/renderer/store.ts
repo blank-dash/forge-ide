@@ -13,7 +13,7 @@ import type {
   ToolUseBlock
 } from '@shared/types'
 import type { Attachment } from './attachments'
-import type { Bootstrap } from '../preload'
+import type { Bootstrap, LiveStatus } from '../preload'
 
 export type RenderBlock =
   | { kind: 'text'; text: string }
@@ -50,8 +50,22 @@ export interface Tab {
   savedContent: string
 }
 
+/** Everything that belongs to one conversation rather than to the window. */
+export interface SessionView {
+  entries: ChatEntry[]
+  errors: ChatError[]
+  notices: Notice[]
+  running: boolean
+  totals: TokenUsage
+  changes: PendingChange[]
+  queuedCount: number
+  context: { used: number; window: number; estimated: boolean } | null
+}
+
 export type SidePanel = 'explorer' | 'git' | 'sessions'
 export type MainView = 'editor' | 'review'
+/** Which pane the full-window chat view is showing. */
+export type ChatPane = 'chats' | 'dashboard' | 'tasks' | 'browser' | 'live'
 
 interface UiState {
   sidebarWidth: number
@@ -64,6 +78,7 @@ interface UiState {
   settingsSection: string
   sidePanel: SidePanel
   mainView: MainView
+  chatPane: ChatPane
 }
 
 interface State {
@@ -85,6 +100,14 @@ interface State {
   context: { used: number; window: number; estimated: boolean } | null
 
   changes: PendingChange[]
+  /** Conversations running in the background, keyed by session id. */
+  background: Record<string, SessionView>
+  /** Ids currently mid-turn, including ones not on screen. */
+  liveSessions: string[]
+  /** Scheduled tasks running right now, so the rail can show a count. */
+  runningTasks: string[]
+  /** Live-mode session, or null when nothing is being shared. */
+  live: LiveStatus | null
   git: GitStatus | null
   mcp: McpServerStatus[]
 
@@ -105,7 +128,7 @@ interface State {
   patchUi(patch: Partial<UiState>): void
 
   pushUser(text: string, attachments?: Attachment[]): void
-  applyEvent(event: AgentEvent): void
+  applyEvent(event: AgentEvent, sessionId?: string): void
   pushError(message: string, detail?: string): void
   dismissError(id: string): void
   dismissNotice(id: string): void
@@ -118,6 +141,11 @@ interface State {
   }): void
   setPermission(request: PermissionRequest | null): void
   setSessionId(id: string | null): void
+  /** Moves the on-screen conversation aside and brings another one forward. */
+  switchSession(id: string, view?: SessionView): void
+  setLiveSessions(sessions: Array<{ id: string; running: boolean }>): void
+  setTaskRunning(taskId: string, running: boolean): void
+  setLive(status: LiveStatus | null): void
 
   setGit(status: GitStatus | null): void
   setMcp(statuses: McpServerStatus[]): void
@@ -158,6 +186,10 @@ export const useStore = create<State>((set, get) => ({
   context: null,
 
   changes: [],
+  background: {},
+  liveSessions: [],
+  runningTasks: [],
+  live: null,
   git: null,
   mcp: [],
 
@@ -176,7 +208,8 @@ export const useStore = create<State>((set, get) => ({
     settingsOpen: false,
     settingsSection: 'providers',
     sidePanel: 'explorer',
-    mainView: 'editor'
+    mainView: 'editor',
+    chatPane: 'chats'
   },
 
   init: (bootstrap) =>
@@ -220,7 +253,20 @@ export const useStore = create<State>((set, get) => ({
       ]
     })),
 
-  applyEvent: (event) => {
+  applyEvent: (event, sessionId) => {
+    // An event for a conversation that is not on screen updates its stored
+    // view instead, so leaving a chat to work does not lose its output.
+    const active = get().sessionId
+    if (sessionId && active && sessionId !== active) {
+      set((state) => ({
+        background: {
+          ...state.background,
+          [sessionId]: applyToView(state.background[sessionId] ?? emptyView(), event)
+        }
+      }))
+      return
+    }
+
     switch (event.type) {
       case 'turn_start':
         set((state) => ({
@@ -381,6 +427,63 @@ export const useStore = create<State>((set, get) => ({
 
   setPermission: (permission) => set({ permission }),
   setSessionId: (sessionId) => set({ sessionId }),
+
+  switchSession: (id, view) =>
+    set((state) => {
+      const background = { ...state.background }
+      // Park the conversation leaving the screen so it keeps accumulating.
+      if (state.sessionId && state.sessionId !== id) {
+        background[state.sessionId] = {
+          entries: state.entries,
+          errors: state.errors,
+          notices: state.notices,
+          running: state.running,
+          totals: state.totals,
+          changes: state.changes,
+          queuedCount: state.queuedCount,
+          context: state.context
+        }
+      }
+
+      const next = view ?? background[id] ?? emptyView()
+      delete background[id]
+
+      return {
+        background,
+        sessionId: id,
+        entries: next.entries,
+        errors: next.errors,
+        notices: next.notices,
+        running: next.running,
+        totals: next.totals,
+        changes: next.changes,
+        queuedCount: next.queuedCount,
+        context: next.context
+      }
+    }),
+
+  setLive: (live) => set({ live }),
+
+  setTaskRunning: (taskId, running) =>
+    set((state) => ({
+      runningTasks: running
+        ? state.runningTasks.includes(taskId)
+          ? state.runningTasks
+          : [...state.runningTasks, taskId]
+        : state.runningTasks.filter((id) => id !== taskId)
+    })),
+
+  setLiveSessions: (sessions) =>
+    set((state) => ({
+      liveSessions: sessions.filter((entry) => entry.running).map((entry) => entry.id),
+      // A background turn that finished has to stop showing as running.
+      background: Object.fromEntries(
+        Object.entries(state.background).map(([id, view]) => [
+          id,
+          { ...view, running: sessions.find((entry) => entry.id === id)?.running ?? view.running }
+        ])
+      )
+    })),
   setGit: (git) => set({ git }),
   setMcp: (mcp) => set({ mcp }),
   setChanges: (changes) => set({ changes }),
@@ -472,11 +575,7 @@ function mapEntry(
 }
 
 /** Streams text into the trailing block of the same kind, or starts a new one. */
-function appendText(
-  blocks: RenderBlock[],
-  kind: 'text' | 'thinking',
-  text: string
-): RenderBlock[] {
+function appendText(blocks: RenderBlock[], kind: 'text' | 'thinking', text: string): RenderBlock[] {
   const last = blocks.at(-1)
   if (last && last.kind === kind) {
     return [...blocks.slice(0, -1), { kind, text: last.text + text }]
@@ -492,5 +591,132 @@ function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
     cacheWrite: a.cacheWrite + b.cacheWrite,
     reasoning: a.reasoning + b.reasoning,
     costUsd: a.costUsd + b.costUsd
+  }
+}
+
+export function emptyView(): SessionView {
+  return {
+    entries: [],
+    errors: [],
+    notices: [],
+    running: false,
+    totals: EMPTY_USAGE,
+    changes: [],
+    queuedCount: 0,
+    context: null
+  }
+}
+
+/**
+ * The same reducer as the visible one, but for a conversation off screen.
+ * Deltas and tool results still accumulate, so switching back shows the full
+ * transcript rather than a gap.
+ */
+function applyToView(view: SessionView, event: AgentEvent): SessionView {
+  switch (event.type) {
+    case 'turn_start':
+      return {
+        ...view,
+        running: true,
+        entries: [
+          ...view.entries,
+          {
+            id: event.messageId,
+            role: 'assistant',
+            blocks: [],
+            streaming: true,
+            model: event.model
+          }
+        ]
+      }
+    case 'text_delta':
+      return {
+        ...view,
+        entries: mapEntry(view.entries, event.messageId, (entry) => ({
+          ...entry,
+          blocks: appendText(entry.blocks, 'text', event.text)
+        }))
+      }
+    case 'thinking_delta':
+      return {
+        ...view,
+        entries: mapEntry(view.entries, event.messageId, (entry) => ({
+          ...entry,
+          blocks: appendText(entry.blocks, 'thinking', event.text)
+        }))
+      }
+    case 'tool_start':
+      return {
+        ...view,
+        entries: mapEntry(view.entries, event.messageId, (entry) => ({
+          ...entry,
+          blocks: [...entry.blocks, { kind: 'tool', use: event.block }]
+        }))
+      }
+    case 'tool_end':
+      return {
+        ...view,
+        entries: mapEntry(view.entries, event.messageId, (entry) => ({
+          ...entry,
+          blocks: entry.blocks.map((block) =>
+            block.kind === 'tool' && block.use.id === event.toolUseId
+              ? { ...block, result: event.result }
+              : block
+          )
+        }))
+      }
+    case 'turn_end':
+      return {
+        ...view,
+        totals: addUsage(view.totals, event.usage),
+        entries: mapEntry(view.entries, event.messageId, (entry) => ({
+          ...entry,
+          streaming: false,
+          usage: event.usage,
+          durationMs: event.durationMs
+        }))
+      }
+    case 'turn_abandoned':
+      return { ...view, entries: view.entries.filter((entry) => entry.id !== event.messageId) }
+    case 'idle':
+      return {
+        ...view,
+        running: false,
+        queuedCount: 0,
+        entries: view.entries
+          .filter((entry) => entry.role === 'user' || entry.blocks.length > 0)
+          .map((entry) => ({ ...entry, streaming: false }))
+      }
+    case 'error':
+      return {
+        ...view,
+        errors: [
+          ...view.errors,
+          {
+            id: `err-bg-${view.errors.length}-${event.message.length}`,
+            message: event.message,
+            detail: event.detail
+          }
+        ]
+      }
+    case 'notice':
+      return {
+        ...view,
+        notices: [
+          ...view.notices.slice(-3),
+          { id: `note-bg-${view.notices.length}-${event.message.length}`, message: event.message }
+        ]
+      }
+    case 'changes':
+      return { ...view, changes: event.changes }
+    case 'queued':
+      return { ...view, queuedCount: event.pending }
+    case 'context':
+      return {
+        ...view,
+        context: { used: event.used, window: event.window, estimated: event.estimated }
+      }
+    default:
+      return view
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "forge-ide",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Agentic IDE with a Claude Code style interface and bring-your-own-model support",
   "main": "./out/main/index.js",
   "author": {
@@ -12,12 +12,15 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.scripts.json",
     "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/smoke.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/smoke.mjs",
     "icons": "electron scripts/make-icons.cjs",
     "package": "electron-vite build && electron-builder --dir",
     "dist": "electron-vite build && electron-builder --publish never",
-    "release": "electron-vite build && electron-builder --publish always"
+    "release": "electron-vite build && electron-builder --publish always",
+    "check:browser": "esbuild scripts/browser-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/browser-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && electron out/browser-check.mjs",
+    "check:input": "esbuild scripts/input-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/input-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && node out/input-check.mjs",
+    "check:live": "esbuild scripts/live-check.ts --bundle --platform=node --format=esm --target=node20 --outfile=out/live-check.mjs --packages=external --alias:@shared=./src/shared --log-level=warning && electron out/live-check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

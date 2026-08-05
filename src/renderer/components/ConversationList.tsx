@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ContentBlock, Message, SessionSummary } from '@shared/types'
-import { useStore, type ChatEntry, type RenderBlock } from '../store'
+import { useT } from '../i18n'
+import { emptyView, useStore, type ChatEntry, type RenderBlock } from '../store'
+
+/** A stored conversation plus whether it is mid-turn in the background. */
+type SessionRow = SessionSummary & { running: boolean; open: boolean }
 
 type Props = {
   /** The chat view gets a roomier treatment than the IDE sidebar tab. */
@@ -8,13 +12,15 @@ type Props = {
 }
 
 export default function ConversationList({ variant }: Props) {
-  const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const t = useT()
+  const [sessions, setSessions] = useState<SessionRow[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   const pushError = useStore((state) => state.pushError)
   const running = useStore((state) => state.running)
   const sessionId = useStore((state) => state.sessionId)
+  const liveSessions = useStore((state) => state.liveSessions)
 
   const refresh = useCallback(async () => {
     try {
@@ -30,30 +36,50 @@ export default function ConversationList({ variant }: Props) {
     void refresh()
   }, [refresh])
 
-  // A finished turn is the moment history changes.
+  // A finished turn is the moment history changes — in this conversation or in
+  // one running behind it.
   useEffect(() => {
     if (!running) void refresh()
   }, [running, refresh])
 
+  useEffect(() => {
+    void refresh()
+  }, [liveSessions.length, refresh])
+
   const startNew = async (): Promise<void> => {
-    await window.forge.agent.reset()
-    useStore.getState().clearChat()
-    await syncSessionId()
+    await startNewConversation()
     void refresh()
   }
 
+  /**
+   * Switching no longer waits for the current turn. The conversation you leave
+   * keeps running in the background and its output is waiting when you return.
+   */
   const open = async (id: string): Promise<void> => {
-    if (running) {
-      pushError('Finish or stop the current turn before switching conversations.')
-      return
-    }
+    const store = useStore.getState()
+    if (id === store.sessionId) return
+
     try {
+      // A conversation already open in the main process has live state; one that
+      // is not has to be read back from disk.
+      const live = await window.forge.agent.state(id).catch(() => null)
+      if (live) {
+        await window.forge.agent.activate(id)
+        store.switchSession(id, {
+          ...emptyView(),
+          entries: toEntries(live.messages),
+          totals: live.totals,
+          running: live.running,
+          changes: live.changes
+        })
+        return
+      }
+
       const record = await window.forge.sessions.load(id)
-      useStore.getState().loadState({
+      store.switchSession(record.id, {
+        ...emptyView(),
         entries: toEntries(record.messages),
-        totals: record.totals,
-        changes: [],
-        sessionId: record.id
+        totals: record.totals
       })
     } catch (error) {
       pushError((error as Error).message)
@@ -64,55 +90,71 @@ export default function ConversationList({ variant }: Props) {
 
   return (
     <>
-      <div className="pane-header">
-        {variant === 'full' ? 'Chats' : 'History'}
-        <span style={{ flex: 1 }} />
-        <button className="icon-btn" title="New conversation" onClick={() => void startNew()}>
-          + new
-        </button>
-      </div>
+      {/* The chat rail supplies its own header and New task button, so
+          repeating them here would just be noise. */}
+      {variant === 'sidebar' && (
+        <div className="pane-header">
+          {t('History')}
+          <span style={{ flex: 1 }} />
+          <button
+            className="icon-btn"
+            title={t('New conversation')}
+            onClick={() => void startNew()}
+          >
+            {t('+ new')}
+          </button>
+        </div>
+      )}
 
       <div className="convo-search">
         <input
           className="input"
-          placeholder="Search conversations"
+          placeholder={t('Search conversations')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
 
       <div className="tree convo-list">
-        {loading && <div className="empty-hint">Loading…</div>}
+        {loading && <div className="empty-hint">{t('Loading…')}</div>}
 
         {!loading && sessions.length === 0 && (
           <div className="empty-hint">
-            No saved conversations for this folder yet. They are stored per workspace and never
-            inside your repository.
+            {t(
+              'No saved conversations for this folder yet. They are stored per workspace and never inside your repository.'
+            )}
           </div>
         )}
 
         {!loading && sessions.length > 0 && groups.every(([, items]) => items.length === 0) && (
-          <div className="empty-hint">Nothing matches “{query}”.</div>
+          <div className="empty-hint">
+            {t('Nothing matches')} “{query}”.
+          </div>
         )}
 
         {groups.map(([label, items]) =>
           items.length === 0 ? null : (
             <div key={label}>
-              <div className="git-group">{label}</div>
+              <div className="git-group">{t(label)}</div>
               {items.map((session) => (
                 <div
                   className={`session-row ${session.id === sessionId ? 'active' : ''}`}
                   key={session.id}
                 >
                   <button className="session-open" onClick={() => void open(session.id)}>
-                    <span className="session-title">{session.title}</span>
+                    <span className="session-title">
+                      {session.running && <span className="session-live" aria-hidden />}
+                      {session.title}
+                    </span>
                     <span className="session-meta">
-                      {session.messageCount} msg · {relative(session.updatedAt)}
+                      {session.running
+                        ? t('working…')
+                        : `${session.messageCount} ${t('msg')} · ${relative(session.updatedAt)}`}
                     </span>
                   </button>
                   <button
                     className="icon-btn danger"
-                    title="Delete"
+                    title={t('Delete')}
                     onClick={async () => {
                       await window.forge.sessions.remove(session.id)
                       void refresh()
@@ -136,16 +178,25 @@ export async function syncSessionId(): Promise<void> {
   if (state) useStore.getState().setSessionId(state.id)
 }
 
+/**
+ * Opens a fresh conversation. The one you were in is parked, not stopped: if it
+ * was mid-turn it carries on, and its reply is there when you go back.
+ */
+export async function startNewConversation(): Promise<void> {
+  const id = await window.forge.agent.create()
+  useStore.getState().switchSession(id, emptyView())
+}
+
 const DAY = 86_400_000
 
-function groupByAge(sessions: SessionSummary[], query: string): Array<[string, SessionSummary[]]> {
+function groupByAge<T extends SessionSummary>(sessions: T[], query: string): Array<[string, T[]]> {
   const needle = query.trim().toLowerCase()
   const matching = needle
     ? sessions.filter((session) => session.title.toLowerCase().includes(needle))
     : sessions
 
   const now = Date.now()
-  const buckets: Array<[string, SessionSummary[]]> = [
+  const buckets: Array<[string, T[]]> = [
     ['Today', []],
     ['Yesterday', []],
     ['Previous 7 days', []],

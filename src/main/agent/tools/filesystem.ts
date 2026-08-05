@@ -249,6 +249,9 @@ export const deleteFileTool: ToolDef<DeleteInput> = {
     const approved = await ctx.requestPermission({
       toolName: 'delete_file',
       kind: 'edit',
+      // What makes the comment above true. Without it, "apply edits without
+      // asking" silently covered deletions as well.
+      destructive: true,
       title: `Delete ${shown}`,
       detail: before
         .split('\n')
@@ -260,6 +263,15 @@ export const deleteFileTool: ToolDef<DeleteInput> = {
     if (!approved) throw new ToolError('User rejected the deletion.')
 
     await fs.rm(absolute)
+    // Recorded so the deletion can be undone from the review screen like any
+    // other edit. Without this it was the one change with no way back.
+    ctx.changes.record({
+      absolutePath: absolute,
+      displayPath: shown,
+      before,
+      after: '',
+      deleted: true
+    })
     ctx.notifyFileChanged(absolute)
 
     return {

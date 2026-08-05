@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { EditApproval, PermissionRequest, ToolDisplay } from '@shared/types'
+import type { EditApproval, ImageBlock, PermissionRequest, ToolDisplay } from '@shared/types'
 import type { ChangeTracker } from '../changes'
 
 export interface ToolContext {
@@ -25,6 +25,8 @@ export interface ToolOutcome {
   /** Text handed back to the model. */
   content: string
   display: ToolDisplay
+  /** Images to show the model, sent as image blocks in the same turn. */
+  images?: ImageBlock[]
 }
 
 export interface ToolDef<Input = Record<string, never>> {

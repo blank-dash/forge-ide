@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import ChatPanel from './components/ChatPanel'
 import ChatView from './components/ChatView'
-import ConversationList, { syncSessionId } from './components/ConversationList'
+import ConversationList, { startNewConversation } from './components/ConversationList'
 import EditorPane from './components/EditorPane'
 import ErrorBoundary from './components/ErrorBoundary'
 import FileTree from './components/FileTree'
@@ -14,13 +14,14 @@ import SetupWizard from './components/SetupWizard'
 import StatusBar from './components/StatusBar'
 import TerminalPane from './components/TerminalPane'
 import TitleBar from './components/TitleBar'
+import TaskToast from './components/TaskToast'
 import UpdateToast from './components/UpdateToast'
 import { useStore, type SidePanel } from './store'
 
 const SIDE_PANELS: Array<{ id: SidePanel; label: string; hint: string }> = [
   { id: 'explorer', label: 'Files', hint: 'Explorer' },
   { id: 'git', label: 'Git', hint: 'Source control' },
-  { id: 'sessions', label: 'History', hint: 'Saved conversations' }
+  { id: 'sessions', label: 'History', hint: 'Saved conversations' },
 ]
 
 export default function App() {
@@ -44,22 +45,42 @@ export default function App() {
           store.setChanges(state.changes ?? [])
           store.setSessionId(state.id)
         }
+        // A task can already be mid-run when the window opens — after a reload,
+        // or because the app was launched into one that was overdue.
+        for (const task of await window.forge.tasks.list().catch(() => [])) {
+          if (task.running) store.setTaskRunning(task.id, true)
+        }
+        // A live session survives a renderer reload, so the indicator has to
+        // come back with it rather than waiting for the next status event.
+        store.setLive(await window.forge.live.status().catch(() => null))
         store.setMcp(await window.forge.mcp.status().catch(() => []))
         store.setGit(await window.forge.git.status().catch(() => null))
       })
       .catch((error: Error) => store.pushError(`Startup failed: ${error.message}`))
 
     const unsubscribes = [
-      window.forge.agent.onEvent((event) => useStore.getState().applyEvent(event)),
+      window.forge.agent.onEvent(({ sessionId, event }) =>
+        useStore.getState().applyEvent(event, sessionId),
+      ),
+      window.forge.agent.onSessionsChanged((sessions) =>
+        useStore.getState().setLiveSessions(sessions),
+      ),
+      // The agent opening a page is only useful if it is also shown.
+      window.forge.live.onStatus((status) => useStore.getState().setLive(status)),
+      window.forge.browser.onReveal(() => {
+        const state = useStore.getState()
+        if (state.settings.mode !== 'chat') void state.saveSettings({ mode: 'chat' })
+        state.patchUi({ chatPane: 'browser' })
+      }),
       window.forge.agent.onPermissionRequest((request) =>
-        useStore.getState().setPermission(request)
+        useStore.getState().setPermission(request),
       ),
       window.forge.agent.onPermissionCancelled((id) => {
         const current = useStore.getState().permission
         if (current?.id === id) useStore.getState().setPermission(null)
       }),
       window.forge.settings.onChanged((next) => useStore.getState().setSettings(next)),
-      window.forge.mcp.onStatus((statuses) => useStore.getState().setMcp(statuses))
+      window.forge.mcp.onStatus((statuses) => useStore.getState().setMcp(statuses)),
     ]
 
     return () => {
@@ -76,12 +97,14 @@ export default function App() {
     root.style.setProperty('--chat-size', `${settings.chatFontSize}px`)
     root.style.setProperty('--editor-size', `${settings.editorFontSize}px`)
     root.style.setProperty('--mono', settings.fontFamily)
+    window.forge.setZoom(settings.uiScale)
   }, [
     settings.theme,
     settings.accent,
     settings.chatFontSize,
     settings.editorFontSize,
-    settings.fontFamily
+    settings.fontFamily,
+    settings.uiScale,
   ])
 
   /* ---------------- application menu ---------------- */
@@ -97,9 +120,7 @@ export default function App() {
           break
         }
         case 'menu:new-session':
-          await window.forge.agent.reset()
-          state.clearChat()
-          await syncSessionId()
+          await startNewConversation()
           break
         case 'menu:save':
           state.requestSave()
@@ -128,7 +149,7 @@ export default function App() {
           break
       }
     },
-    [patchUi]
+    [patchUi],
   )
 
   useEffect(() => {
@@ -161,6 +182,7 @@ export default function App() {
         <StatusBar />
         <PermissionDialog />
         <UpdateToast />
+        <TaskToast />
         {ui.settingsOpen && (
           <ErrorBoundary label="Settings">
             <SettingsModal />
@@ -204,7 +226,7 @@ export default function App() {
               axis="x"
               onDelta={(delta) =>
                 patchUi({
-                  sidebarWidth: clamp(useStore.getState().ui.sidebarWidth + delta, 170, 560)
+                  sidebarWidth: clamp(useStore.getState().ui.sidebarWidth + delta, 170, 560),
                 })
               }
             />
@@ -225,8 +247,8 @@ export default function App() {
                     terminalHeight: clamp(
                       useStore.getState().ui.terminalHeight - delta,
                       100,
-                      window.innerHeight - 260
-                    )
+                      window.innerHeight - 260,
+                    ),
                   })
                 }
               />
@@ -256,6 +278,7 @@ export default function App() {
 
       <PermissionDialog />
       <UpdateToast />
+      <TaskToast />
       {ui.settingsOpen && (
         <ErrorBoundary label="Settings">
           <SettingsModal />
