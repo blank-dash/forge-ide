@@ -1119,7 +1119,45 @@ End by asking whether to proceed, or which alternative to take.
   )
 ]
 
+const VOICE: Skill[] = [
+  skill(
+    'voice-conversation',
+    'Voice',
+    'Run a spoken conversation with reliable text fallback',
+    `
+Treat speech as an input/output transport, not as a model capability.
+- Prefer the configured system voice for output when a provider has no TTS endpoint.
+- Keep every spoken reply available as text in the owning conversation.
+- If transcription fails, ask for a typed message instead of claiming silence.
+- Keep replies concise and natural for listening; avoid reading code unless asked.
+`
+  ),
+  skill(
+    'screen-observation',
+    'Voice & vision',
+    'Inspect the shared screen before taking any action',
+    `
+In Live mode, call the screen observation tool before discussing or changing the desktop.
+Use the newest frame for coordinates, describe uncertainty, and never assume a control is where it was previously.
+If screen access is unavailable, continue with text only and say so plainly.
+`
+  ),
+  skill(
+    'hearing-fallback',
+    'Voice',
+    'Handle microphone and transcription failures without losing the conversation',
+    `
+When microphone capture or speech-to-text fails:
+1. Keep the Live session running.
+2. Preserve the visible text conversation.
+3. Explain the exact failure briefly.
+4. Offer typing as an immediate fallback and suggest a provider with speech-to-text only when needed.
+`
+  )
+]
+
 export const BUILTIN_SKILLS: Skill[] = [
+  ...VOICE,
   ...CODE,
   ...DESIGN,
   ...MEDIA,

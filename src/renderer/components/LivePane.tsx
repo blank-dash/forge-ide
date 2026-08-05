@@ -21,6 +21,7 @@ export default function LivePane() {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState('')
   const [actions, setActions] = useState<LiveAction[]>([])
+  const [autoStartRequested, setAutoStartRequested] = useState(false)
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const recorder = useRef(new Recorder())
@@ -31,6 +32,17 @@ export default function LivePane() {
   const pushError = useStore((state) => state.pushError)
   const patchUi = useStore((state) => state.patchUi)
   const spokenReply = useRef<string | null>(null)
+  const autoStarted = useRef(false)
+  const autoShareStarted = useRef(false)
+
+  useEffect(() => {
+    const onStart = (event: Event): void => {
+      const owner = (event as CustomEvent<string>).detail
+      if (owner === sessionId) setAutoStartRequested(true)
+    }
+    window.addEventListener('forge:live-start', onStart)
+    return () => window.removeEventListener('forge:live-start', onStart)
+  }, [sessionId])
 
   const refreshSources = useCallback(async () => {
     try {
@@ -67,6 +79,13 @@ export default function LivePane() {
     if (!status?.active) spokenReply.current = null
   }, [status?.active])
 
+  useEffect(() => {
+    if (!status?.active) {
+      autoStarted.current = false
+      spokenReply.current = null
+    }
+  }, [status?.active])
+
   // The preview is what makes this honest: while a session is running you can
   // see the same frames the agent is being given.
   useEffect(() => {
@@ -89,7 +108,7 @@ export default function LivePane() {
     }
   }, [status?.active])
 
-  const start = async (): Promise<void> => {
+  async function start(): Promise<void> {
     setBusy(true)
     setError(null)
     try {
@@ -101,6 +120,13 @@ export default function LivePane() {
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (!autoStartRequested || autoShareStarted.current || status?.active || !picked) return
+    autoShareStarted.current = true
+    setAutoStartRequested(false)
+    void start()
+  }, [autoStartRequested, picked, status?.active])
 
   useEffect(() => {
     return () => recorder.current.cancel()
@@ -122,6 +148,13 @@ export default function LivePane() {
       setError((caught as Error).message)
     }
   }, [recording, transcribing, voice.inputModel, voice.inputDevice, pushError])
+
+  useEffect(() => {
+    if (!status?.active || status.sessionId !== sessionId || autoStarted.current) return
+    autoStarted.current = true
+    void speak('Live mode is enabled. What shall we do?', { ...voice, speak: 'system' }).catch(() => undefined)
+    void talk()
+  }, [status?.active, status?.sessionId, sessionId, talk])
 
   const finishTalking = useCallback(async (): Promise<void> => {
     if (!recorder.current.active) return

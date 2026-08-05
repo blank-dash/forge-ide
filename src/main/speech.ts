@@ -88,10 +88,13 @@ function speakWindows(text: string, voice: string, rate: number): ChildProcess {
     '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer',
     `$s.Rate = ${scaled}`,
     voice ? `try { $s.SelectVoice(${psQuote(voice)}) } catch {}` : '',
+    // Select a Russian Windows voice automatically when the text contains
+    // Cyrillic and the configured voice is English or unavailable.
     // Read from stdin rather than embedded in the script: an argument would
     // have to survive two levels of quoting, and any reply containing a quote
     // would either break the command or run part of itself.
     '$text = [Console]::In.ReadToEnd()',
+    "if ($text -match '[А-Яа-яЁё]') { try { $ru = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'ru*' } | Select-Object -First 1; if ($ru) { $s.SelectVoice($ru.VoiceInfo.Name) } } catch {} }",
     '$s.Speak($text)'
   ]
     .filter(Boolean)

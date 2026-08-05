@@ -23,6 +23,7 @@ export default function ChatNav() {
   const liveSessions = useStore((state) => state.liveSessions)
   const runningTasks = useStore((state) => state.runningTasks.length)
   const live = useStore((state) => state.live)
+  const sessionId = useStore((state) => state.sessionId)
 
   const mcpBroken = mcp.filter((server) => server.state === 'error').length
 
@@ -91,7 +92,10 @@ export default function ChatNav() {
           label={t('Live mode')}
           active={chatPane === 'live'}
           badge={live?.active ? '●' : undefined}
-          onClick={() => patchUi({ chatPane: 'live' })}
+          onClick={() => {
+            patchUi({ chatPane: 'live' })
+            if (!live?.active && sessionId) setTimeout(() => window.dispatchEvent(new CustomEvent('forge:live-start', { detail: sessionId })), 0)
+          }}
         />
         <NavRow
           icon="◍"
