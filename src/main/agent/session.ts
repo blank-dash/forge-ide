@@ -27,6 +27,13 @@ import {
   type ToolDef
 } from './tools'
 
+/**
+ * How long a tool gets to notice it was stopped before the turn moves on
+ * without it. Long enough for a well-behaved tool to tidy up, short enough that
+ * pressing stop feels like it did something.
+ */
+const TOOL_ABANDON_MS = 2500
+
 const MAX_AGENT_TURNS = 80
 const MAX_ATTEMPTS = 3
 const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504, 529])
@@ -514,7 +521,7 @@ export class AgentSession {
         continue
       }
 
-      const result = await this.runOneTool(use, tools, signal)
+      const result = await this.abortable(this.runOneTool(use, tools, signal), signal, use.id)
       results.push(result)
       this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result })
     }
@@ -568,6 +575,48 @@ export class AgentSession {
       if (signal.aborted) return errorResult(use.id, 'Interrupted by the user.')
       return errorResult(use.id, error instanceof Error ? error.message : String(error))
     }
+  }
+
+  /**
+   * Stop has to mean stop.
+   *
+   * A tool is handed the abort signal and is expected to wind itself up, but
+   * "expected to" is not a guarantee: a shell command whose grandchild still
+   * holds the output pipe, an MCP server that stopped answering, a fetch with
+   * no timeout. Any one of them would leave the loop waiting forever, the
+   * session marked as running, and the stop button apparently doing nothing.
+   *
+   * So the wait is bounded. The tool keeps going in the background if it
+   * insists — that cannot be helped from here — but the conversation is
+   * released, and the result the model sees says plainly what happened.
+   */
+  private async abortable(
+    work: Promise<ToolResultBlock>,
+    signal: AbortSignal,
+    toolUseId: string
+  ): Promise<ToolResultBlock> {
+    if (!signal.aborted && signal.addEventListener) {
+      const abandoned = new Promise<ToolResultBlock>((resolve) => {
+        const give = (): void => {
+          setTimeout(
+            () =>
+              resolve(
+                errorResult(
+                  toolUseId,
+                  'Stopped by the user. This tool did not finish, so its result is unknown.'
+                )
+              ),
+            TOOL_ABANDON_MS
+          ).unref?.()
+        }
+        if (signal.aborted) give()
+        else signal.addEventListener('abort', give, { once: true })
+      })
+
+      return Promise.race([work, abandoned])
+    }
+
+    return work
   }
 
   private async requestPermission(

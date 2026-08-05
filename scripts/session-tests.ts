@@ -59,6 +59,14 @@ function sseResponse(frames: string[]): Response {
   return new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } })
 }
 
+/** Turns event objects into the SSE frames an adapter expects. */
+function frames(events: Array<Record<string, unknown>>): string[] {
+  return events.map((event) => `event: ${String(event.type)}
+data: ${JSON.stringify(event)}
+
+`)
+}
+
 const TEXT_THEN_TOOL = [
   'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":10,"output_tokens":0}}}\n\n',
   'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"working"}}\n\n',
@@ -72,6 +80,8 @@ function makeSession(options: {
   fetchImpl: typeof fetch
   askUser?: (request: PermissionRequest, signal: AbortSignal) => Promise<PermissionDecision>
   config?: Settings
+  /** Extra tools, for exercising how the loop copes with a badly behaved one. */
+  tools?: Array<Record<string, unknown>>
 }): Recorded {
   globalThis.fetch = options.fetchImpl
   const events: AgentEvent[] = []
@@ -85,7 +95,7 @@ function makeSession(options: {
     },
     emit: (event) => events.push(event),
     askUser: options.askUser ?? (async () => ({ action: 'allow' })),
-    mcpTools: () => [],
+    mcpTools: () => (options.tools ?? []) as never,
     skillTool: () => null,
     hostTools: () => [],
     skillCatalogue: () => '',
@@ -141,6 +151,68 @@ export async function runSessionTests(
 
     assertToolPairing(session)
     assert.equal(session.isRunning, false, 'the session must not stay running after an abort')
+  })
+
+  await test('a tool that never finishes does not wedge the session', async () => {
+    /*
+     * The guarantee: stop stops, whatever a tool does.
+     *
+     * A tool is handed the abort signal and is expected to wind up, but that is
+     * an expectation, not a guarantee — a shell command whose grandchild still
+     * holds the output pipe, an MCP server that stopped answering. This one
+     * simply never settles, which is the worst case and the easiest to be sure
+     * about. Without a bound on the wait the turn hangs forever, the session
+     * stays marked running, and the stop button appears to do nothing.
+     */
+    const stuck = {
+      name: 'stuck_tool',
+      description: 'Never returns.',
+      parameters: { type: 'object', properties: {}, required: [] },
+      readOnly: true,
+      title: () => 'Stuck()',
+      run: () => new Promise(() => undefined)
+    }
+
+    const calling = frames([
+      { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 0 } } },
+      {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'tool_use', id: 'toolu_stuck', name: 'stuck_tool' }
+      },
+      {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'input_json_delta', partial_json: '{}' }
+      },
+      { type: 'content_block_stop', index: 0 },
+      {
+        type: 'message_delta',
+        delta: { stop_reason: 'tool_use' },
+        usage: { output_tokens: 5 }
+      }
+    ])
+
+    const { session, events } = makeSession({
+      fetchImpl: (async () => sseResponse(calling)) as typeof fetch,
+      tools: [stuck]
+    })
+
+    const turn = session.send('call the stuck tool')
+    setTimeout(() => session.abort(), 200)
+
+    const outcome = await Promise.race([
+      turn.then(() => 'done'),
+      new Promise((resolve) => setTimeout(() => resolve('hung'), 12_000))
+    ])
+
+    assert.equal(outcome, 'done', 'the turn never ended after stop was pressed')
+    assert.equal(session.isRunning, false, 'the session is still marked as running')
+    assert.ok(
+      events.some((event) => event.type === 'idle'),
+      'nothing told the UI the turn was over'
+    )
+    assertToolPairing(session)
   })
 
   await test('a stop during a permission prompt does not wedge the session', async () => {

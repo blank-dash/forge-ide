@@ -3,6 +3,9 @@ import { number, objectSchema, string, ToolError, truncate, type ToolDef } from 
 
 const DEFAULT_TIMEOUT_MS = 120_000
 const MAX_TIMEOUT_MS = 600_000
+/** How long a killed command gets to actually die before it is abandoned. */
+const ABANDON_GRACE_MS = 1500
+
 const MAX_OUTPUT_CHARS = 60_000
 
 /** Commands we refuse outright, regardless of permission mode. */
@@ -114,6 +117,9 @@ function execute(
     const child = spawn(file, [...args, command], {
       cwd,
       windowsHide: true,
+      // A group of its own, so stopping can take the whole tree rather than
+      // only the shell. Windows has no process groups; taskkill /T covers it.
+      detached: process.platform !== 'win32',
       env: { ...process.env, FORGE_IDE: '1', GIT_PAGER: 'cat', PAGER: 'cat', NO_COLOR: '1' }
     })
 
@@ -130,21 +136,54 @@ function execute(
       resolve({ code, stdout, stderr, timedOut })
     }
 
+    /**
+     * Kills the whole tree, not just the shell.
+     *
+     * `child.kill` reaches one process. The command runs inside a shell, which
+     * usually has children of its own, and on Windows a signal to the shell
+     * leaves every one of them running.
+     */
     const kill = (): void => {
-      // Detached tree kill is unreliable cross-platform; SIGKILL after a grace
-      // period covers the common "child ignored SIGTERM" case.
-      child.kill('SIGTERM')
-      setTimeout(() => child.kill('SIGKILL'), 2000).unref?.()
+      if (child.pid && process.platform === 'win32') {
+        // /T takes the descendants with it, /F does not ask nicely.
+        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+          windowsHide: true,
+          stdio: 'ignore'
+        }).on('error', () => undefined)
+        return
+      }
+
+      try {
+        // Negative pid is the process group, which is why it was detached.
+        if (child.pid) process.kill(-child.pid, 'SIGTERM')
+      } catch {
+        child.kill('SIGTERM')
+      }
+      setTimeout(() => {
+        try {
+          if (child.pid) process.kill(-child.pid, 'SIGKILL')
+        } catch {
+          child.kill('SIGKILL')
+        }
+      }, 2000).unref?.()
     }
 
     const timer = setTimeout(() => {
       timedOut = true
       kill()
+      // Settled on a grace timer rather than waiting for 'close'. A grandchild
+      // that inherited the pipes holds them open after its parent is gone, and
+      // 'close' waits for the pipes — so without this the promise never
+      // resolves and the turn cannot end.
+      setTimeout(() => finish(-1), ABANDON_GRACE_MS).unref?.()
     }, timeout)
 
     const onAbort = (): void => {
-      stderr += '\n[aborted by user]'
+      stderr += `${'\n'}[stopped by the user]`
       kill()
+      // Same reason. Stop has to mean stop even when something downstream is
+      // still holding a pipe open.
+      setTimeout(() => finish(-1), ABANDON_GRACE_MS).unref?.()
     }
     signal.addEventListener('abort', onAbort, { once: true })
 
