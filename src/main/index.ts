@@ -66,6 +66,20 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
 
+  /*
+   * Electron grants every permission a page asks for unless something says
+   * otherwise, which for an app that loads no remote content is more than it
+   * needs. Only the microphone is allowed, and only because dictation cannot
+   * work without it; everything else — notifications, geolocation, MIDI, USB —
+   * is refused rather than left to a default.
+   */
+  mainWindow.webContents.session.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(permission === 'media')
+  })
+  mainWindow.webContents.session.setPermissionCheckHandler(
+    (_contents, permission) => permission === 'media'
+  )
+
   // Anything the app tries to open in a new window goes to the real browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)

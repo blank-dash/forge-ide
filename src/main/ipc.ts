@@ -30,6 +30,8 @@ import { shellLabel as terminalShellLabel, TerminalManager } from './terminal'
 import { TaskRunner } from './task-runner'
 import { TaskStore } from './tasks'
 import { Updater } from './updater'
+import { speakSystem, stopSystemSpeech, systemVoices } from './speech'
+import { speak, transcribe, type SpeakRequest, type TranscribeRequest } from './voice'
 import { Workspace } from './workspace'
 
 export interface Services {
@@ -313,6 +315,7 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       updater.stop()
       scheduler.stop()
       browser.dispose()
+      stopSystemSpeech()
       // Never left running past the window: sharing a screen must end when the
       // thing you started it from is gone.
       live.stop()
@@ -509,6 +512,29 @@ function registerHandlers(
   })
 
   handle('workspace:open', (target: string) => adoptWorkspace(target))
+
+  /* ---------------- voice ---------------- */
+
+  // Both go through the main process rather than the renderer so the API key
+  // never has to be handed to a page.
+  handle('voice:transcribe', (payload: TranscribeRequest) => transcribe(settings.get(), payload))
+  handle('voice:speak', (payload: SpeakRequest) => speak(settings.get(), payload))
+
+  /**
+   * The system synthesiser, driven from here rather than from the page.
+   *
+   * Chromium's own speech API is backed by a service Electron does not ship, so
+   * in the renderer it reports no voices and speaks nothing at all — silently.
+   */
+  handle('voice:voices', () => systemVoices())
+  handle('voice:say', async (payload: { text: string; voice: string; rate: number }) => {
+    await speakSystem(payload.text, payload.voice, payload.rate)
+    return true
+  })
+  handle('voice:hush', async () => {
+    stopSystemSpeech()
+    return true
+  })
 
   /* ---------------- live mode ---------------- */
 

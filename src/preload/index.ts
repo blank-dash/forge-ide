@@ -222,6 +222,19 @@ const api = {
       ipcRenderer.send('permission:respond', { id, decision })
   },
 
+  voice: {
+    /** Audio in, text out. The key stays in the main process. */
+    transcribe: (data: string, mediaType: string, language: string) =>
+      call<{ text: string }>('voice:transcribe', { data, mediaType, language }),
+    speak: (text: string, voice: string) =>
+      call<{ data: string; mediaType: string }>('voice:speak', { text, voice }),
+    /** Voices installed on this machine, from the OS rather than the page. */
+    voices: () => call<Array<{ name: string; lang: string }>>('voice:voices'),
+    say: (text: string, voice: string, rate: number) =>
+      call<boolean>('voice:say', { text, voice, rate }),
+    hush: () => call<boolean>('voice:hush')
+  },
+
   live: {
     sources: () => call<LiveSource[]>('live:sources'),
     status: () => call<LiveStatus>('live:status'),

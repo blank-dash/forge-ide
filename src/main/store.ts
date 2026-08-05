@@ -240,6 +240,7 @@ function migrate(rawInput: Partial<Settings> & LegacySettings): Settings {
     denyRules: input.denyRules ?? [],
     externalRoots: input.externalRoots ?? [],
     layout: { ...DEFAULT_SETTINGS.layout, ...(input.layout ?? {}) },
+    voice: { ...DEFAULT_SETTINGS.voice, ...(input.voice ?? {}) },
     github: {
       ...DEFAULT_SETTINGS.github,
       ...(input.github ?? {}),

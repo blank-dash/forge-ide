@@ -476,6 +476,7 @@ export interface Settings {
   displayName: string
   /** Linked GitHub account. The token is encrypted like a provider key. */
   github: GithubLink
+  voice: VoiceSettings
   theme: ThemeName
   accent: string
   /** Zoom applied to the whole window, 0.7–1.6. 1 is native size. */
@@ -495,6 +496,30 @@ export interface Settings {
   /** Panel sizes and which panel was open, so the window comes back as you left it. */
   layout: LayoutState
   recentWorkspaces: string[]
+}
+
+export interface VoiceSettings {
+  /** Model that turns speech into text, as `providerId:modelId`. */
+  inputModel: string
+  /** Language hint for the recogniser, e.g. "ru". Empty means auto-detect. */
+  inputLanguage: string
+  /** Hold the mic button, or click once to start and again to stop. */
+  pushToTalk: boolean
+  /**
+   * How replies are read aloud.
+   *
+   * `system` uses the operating system's voices: free, offline, immediate. The
+   * API path is there for when those are not good enough, and costs money per
+   * sentence, which is why it is not the default.
+   */
+  speak: 'off' | 'system' | 'api'
+  /** Read every reply aloud, rather than only when asked. */
+  autoSpeak: boolean
+  /** System voice name, or the API voice id, depending on `speak`. */
+  voiceName: string
+  /** Playback rate for system voices, 0.5–2. */
+  rate: number
+  outputModel: string
 }
 
 /** What is stored for a linked GitHub account. */

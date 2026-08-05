@@ -233,6 +233,44 @@ const RU: Record<string, string> = {
   Delete: 'Удалить',
   'working…': 'работает…',
 
+  /* Voice */
+  Voice: 'Голос',
+  'Speak instead of typing, and have replies read back. Both use a provider you have already configured — there is no separate account and nothing extra to install.':
+    'Говорите вместо того, чтобы печатать, и слушайте ответы. И то и другое работает через провайдера, который у вас уже настроен, — отдельной учётной записи и установок не нужно.',
+  'No provider here can do speech yet. Speech needs an OpenAI-compatible endpoint — OpenAI itself, Groq, or a local server that speaks the same API. Add one under Providers and give it a key.':
+    'Ни один из добавленных провайдеров не умеет речь. Нужна конечная точка, совместимая с OpenAI, — сам OpenAI, Groq или локальный сервер с тем же API. Добавьте такого в разделе «Провайдеры» и укажите ключ.',
+  'Speaking to it': 'Вы — ему',
+  'It speaking to you': 'Он — вам',
+  'Transcription model': 'Модель распознавания',
+  'Not set': 'Не выбрано',
+  auto: 'авто',
+  'A two-letter code such as "ru" or "en" makes recognition noticeably more accurate. Leave it empty and the model works it out, which is fine when you switch languages often.':
+    'Двухбуквенный код вроде «ru» или «en» заметно повышает точность. Оставьте пустым — модель определит сама, что удобно, если вы часто переключаете языки.',
+  'Hold the button to talk, release to send': 'Держать кнопку и говорить, отпустить — отправить',
+  'With this off the button toggles instead. Esc throws a recording away either way.':
+    'Если выключить, кнопка будет работать переключателем. Esc в любом случае отменяет запись.',
+  Off: 'Выключено',
+  "This computer's voices": 'Голоса этого компьютера',
+  'Free, works offline, starts instantly': 'Бесплатно, без сети, начинает сразу',
+  'A speech model': 'Модель синтеза речи',
+  'Better voices, costs money per reply': 'Голоса лучше, но каждый ответ стоит денег',
+  'System default': 'Системный по умолчанию',
+  Speed: 'Скорость',
+  'Speech model': 'Модель речи',
+  'Read every reply automatically': 'Читать каждый ответ автоматически',
+  'With this off, each reply gets a speaker button you can press. Code blocks are never read out — only the prose around them.':
+    'Если выключено, у каждого ответа будет кнопка динамика. Блоки кода вслух не читаются — только текст вокруг них.',
+  'Hear it': 'Послушать',
+  'This is how replies will sound.': 'Вот так будут звучать ответы.',
+  'Hold to talk': 'Держите, чтобы говорить',
+  'Click to talk': 'Нажмите, чтобы говорить',
+  'Release to send, Esc to discard': 'Отпустите — отправится, Esc — отменить',
+  'Click to stop, Esc to discard': 'Нажмите, чтобы остановить, Esc — отменить',
+  'Transcribing…': 'Распознаю…',
+  listening: 'слушаю',
+  'Read replies aloud': 'Читать ответы вслух',
+  'Stop reading': 'Перестать читать',
+
   /* Live mode */
   'Live mode': 'Live-режим',
   Sharing: 'Транслируется',

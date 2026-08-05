@@ -128,6 +128,18 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'en',
   displayName: '',
   github: { token: '', login: '', name: '', avatarUrl: '', scopes: [] },
+  voice: {
+    inputModel: '',
+    inputLanguage: '',
+    pushToTalk: true,
+    // Off by default: an app that starts talking on its own the first time you
+    // use it is one people turn off and never turn back on.
+    speak: 'off',
+    autoSpeak: false,
+    voiceName: '',
+    rate: 1,
+    outputModel: ''
+  },
   theme: 'warm-dark',
   accent: '#d97757',
   uiScale: 1,

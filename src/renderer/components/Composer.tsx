@@ -18,6 +18,7 @@ import ContextMeter from './ContextMeter'
 import { startNewConversation } from './ConversationList'
 import EffortPicker from './EffortPicker'
 import Menu from './Menu'
+import MicButton from './MicButton'
 import ModelPicker from './ModelPicker'
 import Select from './Select'
 
@@ -471,6 +472,14 @@ export default function Composer() {
       </div>
 
       <div className="composer-row">
+        <MicButton
+          onText={(text) =>
+            // Appended rather than replacing: dictation is usually the tail of
+            // something already half-typed.
+            setValue((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text))
+          }
+        />
+
         <div style={{ position: 'relative' }}>
           <button
             className="attach-btn"

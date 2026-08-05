@@ -241,6 +241,25 @@ inside your repository. Reopen them from the chat sidebar or the History tab.
 Leaving a conversation does not stop it: it keeps working in the background and
 its reply is waiting when you come back.
 
+## Voice
+
+Speak instead of typing, and have replies read back.
+
+Dictation is push-to-talk by default: hold the microphone button, say what you
+want, release. Escape throws the take away. The audio goes to whichever
+OpenAI-compatible transcription endpoint you configured — OpenAI, Groq, or a
+local server — using the key that is already stored, and the key never reaches
+the page. Giving it a two-letter language hint makes it noticeably more accurate.
+
+Replies are read with your computer's own voices, which cost nothing and work
+offline. Not through the browser's speech API: Electron does not ship the
+service behind it, so that route reports no voices and speaks nothing without
+raising an error. The OS synthesiser is driven directly instead. A paid speech
+model is available if the built-in voices are not good enough.
+
+Code blocks are never read out — only the prose around them. Reading every reply
+automatically is off by default; without it each reply gets a speaker button.
+
 ## Live mode
 
 Share a screen or a single window with the agent so it can see what you see, and

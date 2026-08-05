@@ -7,6 +7,7 @@ import McpSettings from './McpSettings'
 import ProviderEditor from './ProviderEditor'
 import Select from './Select'
 import SkillSettings from './SkillSettings'
+import VoiceSettings from './VoiceSettings'
 
 const SECTIONS = [
   { id: 'account', label: 'Account' },
@@ -15,6 +16,7 @@ const SECTIONS = [
   { id: 'mcp', label: 'MCP servers' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'behaviour', label: 'Agent behaviour' },
+  { id: 'voice', label: 'Voice' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'about', label: 'About' }
 ] as const
@@ -380,6 +382,8 @@ export default function SettingsModal() {
             )}
 
             {section === 'account' && <AccountSettings draft={draft} patch={patch} />}
+
+            {section === 'voice' && <VoiceSettings draft={draft} patch={patch} />}
 
             {section === 'appearance' && (
               <>

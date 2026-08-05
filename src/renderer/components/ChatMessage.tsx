@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatEntry } from '../store'
 import { useStore } from '../store'
 import Spinner from './Spinner'
 import Markdown from './Markdown'
 import ToolBlock from './ToolBlock'
+import { isSpeaking, speak, stopSpeaking } from '../voice'
 
 export default function ChatMessage({ entry }: { entry: ChatEntry }): JSX.Element {
   const showThinking = useStore((state) => state.settings.showThinking)
@@ -58,7 +59,12 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }): JSX.Elemen
         </div>
       )}
 
-      {!entry.streaming && entry.usage && <TurnStats entry={entry} />}
+      {!entry.streaming && entry.usage && (
+        <div className="turn-footer">
+          <TurnStats entry={entry} />
+          <SpeakButton entry={entry} />
+        </div>
+      )}
     </div>
   )
 }
@@ -90,6 +96,49 @@ function Cursor(): JSX.Element {
         animation: 'pulse 1s steps(2, start) infinite'
       }}
     />
+  )
+}
+
+/**
+ * Reads a finished reply aloud.
+ *
+ * Auto-speaking is opt-in and fires once per reply. The ref, rather than a
+ * state flag, is what stops a re-render — a sibling message streaming, a theme
+ * change — from starting the same reply over from the top.
+ */
+function SpeakButton({ entry }: { entry: ChatEntry }): JSX.Element | null {
+  const voice = useStore((state) => state.settings.voice)
+  const [busy, setBusy] = useState(false)
+  const spoken = useRef(false)
+
+  const text = entry.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join(' ')
+
+  useEffect(() => {
+    if (!voice.autoSpeak || voice.speak === 'off' || spoken.current || !text.trim()) return
+    spoken.current = true
+    void speak(text).catch(() => undefined)
+  }, [voice.autoSpeak, voice.speak, text])
+
+  if (voice.speak === 'off' || !text.trim()) return null
+
+  return (
+    <button
+      className="speak-btn"
+      title={busy ? 'Stop reading' : 'Read this aloud'}
+      onClick={() => {
+        if (isSpeaking()) {
+          stopSpeaking()
+          setBusy(false)
+          return
+        }
+        setBusy(true)
+        void speak(text)
+          .catch((error: Error) => useStore.getState().pushError(error.message))
+          .finally(() => setBusy(false))
+      }}
+    >
+      {busy ? '■' : '🔊'}
+    </button>
   )
 }
 
