@@ -47,7 +47,7 @@
     "fast-glob": "^3.3.2",
     "monaco-editor": "^0.52.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.8",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
@@ -55,7 +55,7 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
-    "@types/react-dom": "^18.3.5",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.10",
     "electron": "^43.3.0",
