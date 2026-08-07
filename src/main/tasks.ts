@@ -43,7 +43,11 @@ export class TaskStore {
     const cwd = this.cwd()
     if (this.cache && this.loadedFor === cwd) return this.cache
 
-    const raw = await fs.readFile(this.file, 'utf8').catch(() => null)
+    const raw = await fs.readFile(this.file, 'utf8').catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('[tasks] read failed', this.file, error)
+      return null
+    })
     this.loadedFor = cwd
     this.cache = raw ? this.parse(raw) : []
     return this.cache
@@ -105,7 +109,9 @@ export class TaskStore {
       // Recomputed on load: a stamp written before the app was closed is stale,
       // and the schedule — not the stamp — is what the user actually asked for.
       return parsed
-        .filter((entry): entry is Partial<ScheduledTask> => typeof entry === 'object' && entry !== null)
+        .filter(
+          (entry): entry is Partial<ScheduledTask> => typeof entry === 'object' && entry !== null
+        )
         .map((entry) => this.prepare({ ...entry, id: entry.id || randomUUID() }))
     } catch {
       // A corrupt file must not take the app down with it; the user can rebuild

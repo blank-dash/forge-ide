@@ -23,7 +23,7 @@ import { makeWebTools } from './agent/tools/search.web'
 import { LiveSession, type LiveAccess } from './live/session'
 import { Git } from './git'
 import { McpManager } from './mcp/manager'
-import { getAdapter, testProvider } from './providers'
+import { listModelsCached, testProvider } from './providers'
 import { createNotifier } from './notify'
 import { Scheduler } from './scheduler'
 import { CheckpointStore } from './checkpoints'
@@ -151,17 +151,17 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
       cwd: () => workspace.cwd,
       settings: () => settings.get(),
       skillTool: () => (skills.all(settings.get().disabledSkills).length > 0 ? useSkill : null),
-    hostTools: () => hostTools(currentId()),
-    beforeWrite: (absolutePath) => checkpoints.capture(currentId(), absolutePath),
-    turnBegan: () => checkpoints.begin(currentId()),
-    turnEnded: (label) => {
-      const id = currentId()
-      void checkpoints.commit(id, label).then((saved) => {
-        // Files changed, so the quick-open list is stale.
-        if (saved) index.invalidate()
-        if (saved) send('checkpoints:changed', true)
-      })
-    },
+      hostTools: () => hostTools(currentId()),
+      beforeWrite: (absolutePath) => checkpoints.capture(currentId(), absolutePath),
+      turnBegan: () => checkpoints.begin(currentId()),
+      turnEnded: (label) => {
+        const id = currentId()
+        void checkpoints.commit(id, label).then((saved) => {
+          // Files changed, so the quick-open list is stale.
+          if (saved) index.invalidate()
+          if (saved) send('checkpoints:changed', true)
+        })
+      },
       skillCatalogue: () => skills.catalogue(settings.get().disabledSkills),
       saveSettings: (next) => {
         settings.set(next)
@@ -233,15 +233,12 @@ export function createServices(getWindow: () => BrowserWindow | null): Services 
   }
   const offMcp = mcp.onStatus((statuses) => send('mcp:status', statuses))
 
-
   const updater = new Updater((status) => send('updates:status', status))
   updater.start()
 
   /* ---------------- scheduled tasks ---------------- */
 
-  const notifier = createNotifier(getWindow, (sessionId) =>
-    send('tasks:open-session', sessionId)
-  )
+  const notifier = createNotifier(getWindow, (sessionId) => send('tasks:open-session', sessionId))
   /**
    * Conversations owned by a scheduled task.
    *
@@ -416,7 +413,12 @@ function registerHandlers(
     const loaded = settings.load()
     // A folder passed on the command line wins over the last-used one.
     const last = loaded.recentWorkspaces[0]
-    if (last && !workspace.isExplicit) await workspace.open(last).catch(() => undefined)
+    if (last && !workspace.isExplicit)
+      await workspace
+        .open(last)
+        .catch((error) =>
+          console.warn('[workspace] could not restore recent workspace', last, error)
+        )
 
     // Servers start in the background: a slow one must not delay the window.
     void mcp.sync(loaded.mcpServers)
@@ -516,7 +518,7 @@ function registerHandlers(
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 20_000)
     try {
-      return await getAdapter(provider.kind).listModels(provider, controller.signal)
+      return await listModelsCached(provider, controller.signal)
     } finally {
       clearTimeout(timer)
     }
@@ -532,6 +534,7 @@ function registerHandlers(
     scheduler.stopUntilRefreshed()
     tasks.invalidate()
     manager.abortAll()
+    terminals.killAll()
 
     const root = await workspace.open(target)
     const current = settings.get()
@@ -644,11 +647,14 @@ function registerHandlers(
   handle('live:sources', () => live.sources())
   handle('live:status', async () => live.current())
 
-  handle('live:start', async (payload: { sourceId: string; access: LiveAccess; sessionId?: string }) => {
-    const sessionId = payload.sessionId ?? manager.activeId
-    if (!manager.get(sessionId)) throw new Error('That conversation is no longer open.')
-    return live.start(payload.sourceId, payload.access, sessionId)
-  })
+  handle(
+    'live:start',
+    async (payload: { sourceId: string; access: LiveAccess; sessionId?: string }) => {
+      const sessionId = payload.sessionId ?? manager.activeId
+      if (!manager.get(sessionId)) throw new Error('That conversation is no longer open.')
+      return live.start(payload.sourceId, payload.access, sessionId)
+    }
+  )
   handle('live:stop', async () => live.stop())
 
   /** A frame for the preview, so the user sees exactly what the agent sees. */
@@ -692,7 +698,6 @@ function registerHandlers(
     await browser.clearData()
     return true
   })
-
 
   /* ---------------- scheduled tasks ---------------- */
 

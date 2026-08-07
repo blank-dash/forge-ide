@@ -165,7 +165,11 @@ export default function ProviderEditor({ provider, onChange, onRemove }: Props) 
             >
               Add
             </button>
-            <button className="btn narrow" onClick={() => void fetchModels()} disabled={busy !== null}>
+            <button
+              className="btn narrow"
+              onClick={() => void fetchModels()}
+              disabled={busy !== null}
+            >
               {busy === 'models' ? 'Loading…' : 'Fetch list'}
             </button>
           </div>
@@ -177,7 +181,9 @@ export default function ProviderEditor({ provider, onChange, onRemove }: Props) 
               </div>
               <div className="chip-wrap">
                 {discovered
-                  .filter((id) => !draftModel || id.toLowerCase().includes(draftModel.toLowerCase()))
+                  .filter(
+                    (id) => !draftModel || id.toLowerCase().includes(draftModel.toLowerCase())
+                  )
                   .map((id) => (
                     <button
                       key={id}
@@ -292,9 +298,7 @@ function ModelRow({ model, onChange, onRemove }: ModelRowProps) {
           label="$/Mtok in"
           value={model.pricing?.input ?? 0}
           step={0.01}
-          onChange={(input) =>
-            update({ pricing: { input, output: model.pricing?.output ?? 0 } })
-          }
+          onChange={(input) => update({ pricing: { input, output: model.pricing?.output ?? 0 } })}
         />
         <NumberField
           label="$/Mtok out"
@@ -404,7 +408,11 @@ type CapabilityProps = {
 function Capability({ label, hint, checked, onChange }: CapabilityProps) {
   return (
     <label className="switch small" title={hint}>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
       {label}
     </label>
   )
@@ -444,7 +452,11 @@ function JsonField({ value, placeholder, onChange }: JsonFieldProps) {
           }
         }}
       />
-      {invalid && <div className="hint" style={{ color: 'var(--red)' }}>Not valid JSON yet.</div>}
+      {invalid && (
+        <div className="hint" style={{ color: 'var(--red)' }}>
+          Not valid JSON yet.
+        </div>
+      )}
     </>
   )
 }

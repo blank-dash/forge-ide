@@ -51,9 +51,11 @@ export default function Composer() {
   useEffect(() => {
     if (!composerInsert) return
     setValue((current) =>
-      current.trim() ? `${current.trimEnd()}
+      current.trim()
+        ? `${current.trimEnd()}
 
-${composerInsert.text}` : composerInsert.text
+${composerInsert.text}`
+        : composerInsert.text
     )
     textarea.current?.focus()
   }, [composerInsert])
@@ -521,7 +523,10 @@ ${composerInsert.text}` : composerInsert.text
             patchUi({ chatPane: 'live' })
             const owner = useStore.getState().sessionId
             if (owner) {
-              setTimeout(() => window.dispatchEvent(new CustomEvent('forge:live-start', { detail: owner })), 0)
+              setTimeout(
+                () => window.dispatchEvent(new CustomEvent('forge:live-start', { detail: owner })),
+                0
+              )
             }
           }}
         >

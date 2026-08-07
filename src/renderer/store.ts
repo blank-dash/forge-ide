@@ -14,6 +14,7 @@ import type {
 } from '@shared/types'
 import type { Attachment } from './attachments'
 import type { Bootstrap, LiveStatus } from '../preload'
+import { reduceSession } from './session-reducer'
 
 export type RenderBlock =
   | { kind: 'text'; text: string }
@@ -135,6 +136,7 @@ interface State {
   ui: UiState
 
   init(bootstrap: Bootstrap): void
+  resetWorkspace(bootstrap: Bootstrap): void
   setSettings(settings: Settings): void
   saveSettings(patch: Partial<Settings>): Promise<void>
   patchUi(patch: Partial<UiState>): void
@@ -193,7 +195,6 @@ const EMPTY_USAGE: TokenUsage = {
   reasoning: 0,
   costUsd: 0
 }
-const MAX_NOTICES = 4
 
 export const useStore = create<State>((set, get) => ({
   ready: false,
@@ -251,6 +252,38 @@ export const useStore = create<State>((set, get) => ({
     })),
   setSettings: (settings) => set({ settings }),
 
+  resetWorkspace: (bootstrap) =>
+    set({
+      ready: true,
+      bootstrap,
+      settings: bootstrap.settings,
+      entries: [],
+      errors: [],
+      notices: [],
+      running: false,
+      totals: EMPTY_USAGE,
+      permission: null,
+      sessionId: null,
+      sessionModel: null,
+      queuedCount: 0,
+      context: null,
+      changes: [],
+      background: {},
+      liveSessions: [],
+      runningTasks: [],
+      live: null,
+      revealRequest: null,
+      composerInsert: null,
+      git: null,
+      mcp: [],
+      tabs: [],
+      activeTab: null,
+      changedFiles: new Set(),
+      fsRevision: 0,
+      saveRequest: 0,
+      ui: { ...stateUi(), ...bootstrap.settings.layout }
+    }),
+
   saveSettings: async (patch) => {
     const next = { ...get().settings, ...patch }
     // Optimistic: the UI must not lag behind a toggle the user just flipped.
@@ -282,7 +315,8 @@ export const useStore = create<State>((set, get) => ({
       ]
     })),
 
-  removeEntry: (id) => set((state) => ({ entries: state.entries.filter((entry) => entry.id !== id) })),
+  removeEntry: (id) =>
+    set((state) => ({ entries: state.entries.filter((entry) => entry.id !== id) })),
 
   applyEvent: (event, sessionId) => {
     // An event for a conversation that is not on screen updates its stored
@@ -292,138 +326,50 @@ export const useStore = create<State>((set, get) => ({
       set((state) => ({
         background: {
           ...state.background,
-          [sessionId]: applyToView(state.background[sessionId] ?? emptyView(), event)
+          [sessionId]: reduceSession(state.background[sessionId] ?? emptyView(), event)
         }
       }))
       return
     }
 
-    switch (event.type) {
-      case 'turn_start':
-        set((state) => ({
-          running: true,
-          entries: [
-            ...state.entries,
-            {
-              id: event.messageId,
-              role: 'assistant',
-              blocks: [],
-              streaming: true,
-              model: event.model
-            }
-          ]
-        }))
-        break
-
-      case 'text_delta':
-        set((state) => ({
-          entries: mapEntry(state.entries, event.messageId, (entry) => ({
-            ...entry,
-            blocks: appendText(entry.blocks, 'text', event.text)
-          }))
-        }))
-        break
-
-      case 'thinking_delta':
-        set((state) => ({
-          entries: mapEntry(state.entries, event.messageId, (entry) => ({
-            ...entry,
-            blocks: appendText(entry.blocks, 'thinking', event.text)
-          }))
-        }))
-        break
-
-      case 'tool_start':
-        set((state) => ({
-          entries: mapEntry(state.entries, event.messageId, (entry) => ({
-            ...entry,
-            blocks: [...entry.blocks, { kind: 'tool', use: event.block }]
-          }))
-        }))
-        break
-
-      case 'tool_end':
-        set((state) => ({
-          entries: mapEntry(state.entries, event.messageId, (entry) => ({
-            ...entry,
-            blocks: entry.blocks.map((block) =>
-              block.kind === 'tool' && block.use.id === event.toolUseId
-                ? { ...block, result: event.result }
-                : block
-            )
-          }))
-        }))
-        break
-
-      case 'turn_end':
-        set((state) => ({
-          totals: addUsage(state.totals, event.usage),
-          entries: mapEntry(state.entries, event.messageId, (entry) => ({
-            ...entry,
-            streaming: false,
-            usage: event.usage,
-            durationMs: event.durationMs
-          }))
-        }))
-        break
-
-      case 'queued':
-        set({ queuedCount: event.pending })
-        break
-
-      case 'turn_abandoned':
-        set((state) => ({
-          entries: state.entries.filter((entry) => entry.id !== event.messageId)
-        }))
-        break
-
-      case 'idle':
-        set((state) => ({
-          running: false,
-          permission: null,
-          queuedCount: 0,
-          // A turn that produced nothing leaves an empty bubble behind.
-          entries: state.entries
-            .filter((entry) => entry.role === 'user' || entry.blocks.length > 0)
-            .map((entry) => ({ ...entry, streaming: false }))
-        }))
-        break
-
-      case 'context':
-        set({
-          context: { used: event.used, window: event.window, estimated: event.estimated }
-        })
-        break
-
-      case 'error':
-        get().pushError(event.message, event.detail)
-        break
-
-      case 'notice':
-        set((state) => ({
-          notices: [
-            ...state.notices.slice(-(MAX_NOTICES - 1)),
-            { id: `note-${Date.now()}-${state.notices.length}`, message: event.message }
-          ]
-        }))
-        break
-
-      case 'file_changed':
-        set((state) => {
-          const next = new Set(state.changedFiles)
-          next.add(event.path)
-          return { changedFiles: next, fsRevision: state.fsRevision + 1 }
-        })
-        break
-
-      case 'changes':
-        set({ changes: event.changes })
-        break
-
-      case 'git_dirty':
-        set((state) => ({ fsRevision: state.fsRevision + 1 }))
-        break
+    if (event.type === 'file_changed') {
+      set((state) => {
+        const next = new Set(state.changedFiles)
+        next.add(event.path)
+        return { changedFiles: next, fsRevision: state.fsRevision + 1 }
+      })
+      return
     }
+    if (event.type === 'git_dirty') {
+      set((state) => ({ fsRevision: state.fsRevision + 1 }))
+      return
+    }
+
+    set((state) => {
+      const view: SessionView = {
+        entries: state.entries,
+        errors: state.errors,
+        notices: state.notices,
+        running: state.running,
+        totals: state.totals,
+        changes: state.changes,
+        queuedCount: state.queuedCount,
+        context: state.context
+      }
+      const next = reduceSession(view, event)
+      return {
+        entries: next.entries,
+        errors: next.errors,
+        notices: next.notices,
+        running: next.running,
+        totals: next.totals,
+        changes: next.changes,
+        queuedCount: next.queuedCount,
+        context: next.context,
+        permission: event.type === 'idle' ? null : state.permission
+      }
+    })
+    return
   },
 
   pushError: (message, detail) =>
@@ -508,7 +454,10 @@ export const useStore = create<State>((set, get) => ({
   exportConversation: async () => {
     const state = get()
     const markdown = conversationMarkdown(state.entries, state.totals)
-    const saved = await window.forge.workspace.exportText(markdown).catch(() => null)
+    const saved = await window.forge.workspace.exportText(markdown).catch((error) => {
+      state.pushError(`Export failed: ${(error as Error).message}`)
+      return null
+    })
     if (saved) state.pushNotice(`Saved to ${saved}`)
   },
 
@@ -614,31 +563,19 @@ function scheduleLayoutSave(): void {
   }, 600)
 }
 
-function mapEntry(
-  entries: ChatEntry[],
-  id: string,
-  fn: (entry: ChatEntry) => ChatEntry
-): ChatEntry[] {
-  return entries.map((entry) => (entry.id === id ? fn(entry) : entry))
-}
-
-/** Streams text into the trailing block of the same kind, or starts a new one. */
-function appendText(blocks: RenderBlock[], kind: 'text' | 'thinking', text: string): RenderBlock[] {
-  const last = blocks.at(-1)
-  if (last && last.kind === kind) {
-    return [...blocks.slice(0, -1), { kind, text: last.text + text }]
-  }
-  return [...blocks, { kind, text }]
-}
-
-function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
+export function stateUi(): UiState {
   return {
-    input: a.input + b.input,
-    output: a.output + b.output,
-    cacheRead: a.cacheRead + b.cacheRead,
-    cacheWrite: a.cacheWrite + b.cacheWrite,
-    reasoning: a.reasoning + b.reasoning,
-    costUsd: a.costUsd + b.costUsd
+    sidebarWidth: 240,
+    chatWidth: 470,
+    chatSidebarWidth: 262,
+    terminalHeight: 220,
+    terminalOpen: false,
+    settingsOpen: false,
+    settingsSection: 'providers',
+    sidePanel: 'explorer',
+    mainView: 'editor',
+    chatPane: 'chats',
+    picker: 'none'
   }
 }
 
@@ -652,120 +589,6 @@ export function emptyView(): SessionView {
     changes: [],
     queuedCount: 0,
     context: null
-  }
-}
-
-/**
- * The same reducer as the visible one, but for a conversation off screen.
- * Deltas and tool results still accumulate, so switching back shows the full
- * transcript rather than a gap.
- */
-function applyToView(view: SessionView, event: AgentEvent): SessionView {
-  switch (event.type) {
-    case 'turn_start':
-      return {
-        ...view,
-        running: true,
-        entries: [
-          ...view.entries,
-          {
-            id: event.messageId,
-            role: 'assistant',
-            blocks: [],
-            streaming: true,
-            model: event.model
-          }
-        ]
-      }
-    case 'text_delta':
-      return {
-        ...view,
-        entries: mapEntry(view.entries, event.messageId, (entry) => ({
-          ...entry,
-          blocks: appendText(entry.blocks, 'text', event.text)
-        }))
-      }
-    case 'thinking_delta':
-      return {
-        ...view,
-        entries: mapEntry(view.entries, event.messageId, (entry) => ({
-          ...entry,
-          blocks: appendText(entry.blocks, 'thinking', event.text)
-        }))
-      }
-    case 'tool_start':
-      return {
-        ...view,
-        entries: mapEntry(view.entries, event.messageId, (entry) => ({
-          ...entry,
-          blocks: [...entry.blocks, { kind: 'tool', use: event.block }]
-        }))
-      }
-    case 'tool_end':
-      return {
-        ...view,
-        entries: mapEntry(view.entries, event.messageId, (entry) => ({
-          ...entry,
-          blocks: entry.blocks.map((block) =>
-            block.kind === 'tool' && block.use.id === event.toolUseId
-              ? { ...block, result: event.result }
-              : block
-          )
-        }))
-      }
-    case 'turn_end':
-      return {
-        ...view,
-        totals: addUsage(view.totals, event.usage),
-        entries: mapEntry(view.entries, event.messageId, (entry) => ({
-          ...entry,
-          streaming: false,
-          usage: event.usage,
-          durationMs: event.durationMs
-        }))
-      }
-    case 'turn_abandoned':
-      return { ...view, entries: view.entries.filter((entry) => entry.id !== event.messageId) }
-    case 'idle':
-      return {
-        ...view,
-        running: false,
-        queuedCount: 0,
-        entries: view.entries
-          .filter((entry) => entry.role === 'user' || entry.blocks.length > 0)
-          .map((entry) => ({ ...entry, streaming: false }))
-      }
-    case 'error':
-      return {
-        ...view,
-        errors: [
-          ...view.errors,
-          {
-            id: `err-bg-${view.errors.length}-${event.message.length}`,
-            message: event.message,
-            detail: event.detail
-          }
-        ]
-      }
-    case 'notice':
-      return {
-        ...view,
-        notices: [
-          ...view.notices.slice(-3),
-          { id: `note-bg-${view.notices.length}-${event.message.length}`, message: event.message }
-        ]
-      }
-    case 'changes':
-      return { ...view, changes: event.changes }
-    case 'queued':
-      return { ...view, queuedCount: event.pending }
-    case 'context':
-      return {
-        ...view,
-        context: { used: event.used, window: event.window, estimated: event.estimated }
-      }
-    default:
-      return view
   }
 }
 

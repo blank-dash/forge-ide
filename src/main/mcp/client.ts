@@ -70,8 +70,7 @@ export class McpClient {
 
   async listTools(): Promise<Array<{ name: string; description: string; inputSchema: unknown }>> {
     const result = (await this.request('tools/list', {})) as
-      | { tools?: Array<{ name: string; description?: string; inputSchema?: unknown }> }
-      | undefined
+      { tools?: Array<{ name: string; description?: string; inputSchema?: unknown }> } | undefined
 
     return (result?.tools ?? []).map((tool) => ({
       name: tool.name,
@@ -82,8 +81,7 @@ export class McpClient {
 
   async callTool(name: string, args: Record<string, unknown>): Promise<McpCallResult> {
     const result = (await this.request('tools/call', { name, arguments: args })) as
-      | { content?: Array<{ type: string; text?: string }>; isError?: boolean }
-      | undefined
+      { content?: Array<{ type: string; text?: string }>; isError?: boolean } | undefined
 
     const text = (result?.content ?? [])
       .map((part) => (part.type === 'text' ? (part.text ?? '') : `[${part.type}]`))

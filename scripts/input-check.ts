@@ -72,9 +72,7 @@ async function main(): Promise<void> {
       `
        last seen at ${lastSeen.x},${lastSeen.y}` +
       `
-       helper said: ${
-        (backend as { lastError?: () => string }).lastError?.() || '(nothing)'
-      }`
+       helper said: ${(backend as { lastError?: () => string }).lastError?.() || '(nothing)'}`
   )
   console.log('  ok  the helper moves the cursor where it is told')
 

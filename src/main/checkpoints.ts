@@ -57,10 +57,19 @@ export class CheckpointStore {
     const turn = this.pending.get(sessionId)
     if (!turn || turn.has(absolutePath)) return
 
-    const stat = await fs.stat(absolutePath).catch(() => null)
+    const stat = await fs.stat(absolutePath).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('[checkpoint] stat failed', absolutePath, error)
+      return null
+    })
     if (stat && stat.size > MAX_FILE_BYTES) return
 
-    const before = stat ? await fs.readFile(absolutePath, 'utf8').catch(() => null) : null
+    const before = stat
+      ? await fs.readFile(absolutePath, 'utf8').catch((error) => {
+          console.warn('[checkpoint] read failed', absolutePath, error)
+          return null
+        })
+      : null
     turn.set(absolutePath, { existed: stat !== null, before })
   }
 
@@ -85,7 +94,9 @@ export class CheckpointStore {
     for (const [absolute, entry] of turn) {
       const name = `${index++}.bak`
       if (entry.existed && entry.before !== null) {
-        await fs.writeFile(path.join(dir, name), entry.before, 'utf8').catch(() => undefined)
+        await fs.writeFile(path.join(dir, name), entry.before, 'utf8').catch((error) => {
+          console.warn('[checkpoint] backup write failed', path.join(dir, name), error)
+        })
       }
       files.push({ path: absolute, existed: entry.existed })
     }
@@ -100,7 +111,9 @@ export class CheckpointStore {
 
     await fs
       .writeFile(path.join(dir, 'meta.json'), JSON.stringify(checkpoint, null, 2), 'utf8')
-      .catch(() => undefined)
+      .catch((error) => {
+        console.warn('[checkpoint] metadata write failed', id, error)
+      })
 
     await this.prune()
     return checkpoint
@@ -112,17 +125,25 @@ export class CheckpointStore {
   }
 
   async list(): Promise<Checkpoint[]> {
-    const names = await fs.readdir(this.root).catch(() => [] as string[])
+    const names = await fs.readdir(this.root).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('[checkpoint] list failed', error)
+      return [] as string[]
+    })
 
     const found = await Promise.all(
       names.map(async (name) => {
         const raw = await fs
           .readFile(path.join(this.root, name, 'meta.json'), 'utf8')
-          .catch(() => null)
+          .catch((error) => {
+            console.warn('[checkpoint] metadata read failed', name, error)
+            return null
+          })
         if (!raw) return null
         try {
           return JSON.parse(raw) as Checkpoint
-        } catch {
+        } catch (error) {
+          console.warn('[checkpoint] invalid metadata', name, error)
           return null
         }
       })
@@ -171,7 +192,9 @@ export class CheckpointStore {
   }
 
   async remove(id: string): Promise<void> {
-    await fs.rm(path.join(this.root, id), { recursive: true, force: true }).catch(() => undefined)
+    await fs.rm(path.join(this.root, id), { recursive: true, force: true }).catch((error) => {
+      console.warn('[checkpoint] remove failed', id, error)
+    })
   }
 
   private async prune(): Promise<void> {

@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 <img src="build/icon-256.png" width="120" alt="Forge dash">
 
@@ -18,16 +18,16 @@ working beside you.
 Grab your platform's build from
 [Releases](https://github.com/blank-dash/forge-ide/releases):
 
-| Platform | File |
-| --- | --- |
+| Platform                  | File                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Windows — any machine** | **`Forge-<version>-setup.exe`** — one installer for Intel/AMD and ARM, picks the right build itself |
-| Windows, smaller download | `Forge-<version>-x64-setup.exe` or `-arm64-setup.exe` |
-| Windows, no install | `Forge-<version>-x64-portable.exe` — runs from anywhere, including a USB stick |
-| macOS (Apple silicon) | `Forge-<version>-arm64.dmg` |
-| macOS (Intel) | `Forge-<version>-x64.dmg` |
-| Linux, any distro | `Forge-<version>-x86_64.AppImage` (or `-arm64`) — `chmod +x` and run |
-| Debian / Ubuntu | `Forge-<version>-amd64.deb` or `-arm64.deb` |
-| Fedora / RHEL | `Forge-<version>-x86_64.rpm` |
+| Windows, smaller download | `Forge-<version>-x64-setup.exe` or `-arm64-setup.exe`                                               |
+| Windows, no install       | `Forge-<version>-x64-portable.exe` — runs from anywhere, including a USB stick                      |
+| macOS (Apple silicon)     | `Forge-<version>-arm64.dmg`                                                                         |
+| macOS (Intel)             | `Forge-<version>-x64.dmg`                                                                           |
+| Linux, any distro         | `Forge-<version>-x86_64.AppImage` (or `-arm64`) — `chmod +x` and run                                |
+| Debian / Ubuntu           | `Forge-<version>-amd64.deb` or `-arm64.deb`                                                         |
+| Fedora / RHEL             | `Forge-<version>-x86_64.rpm`                                                                        |
 
 **The builds are not code-signed**, so the OS will warn you the first time:
 
@@ -57,11 +57,11 @@ Then open **Settings → Providers**, paste an API key, and pick a model.
 Every provider is editable and you can add as many as you like. Pick the API
 format your endpoint speaks:
 
-| Format | Endpoint used | Works with |
-| --- | --- | --- |
-| `openai` | `{base}/chat/completions` | OpenAI, OpenRouter, Groq, DeepSeek, Together, Fireworks, xAI, Mistral, **Ollama**, **LM Studio**, vLLM, llama.cpp, LiteLLM — anything OpenAI-compatible |
-| `anthropic` | `{base}/v1/messages` | Anthropic, and gateways that proxy it |
-| `google` | `{base}/models/{model}:streamGenerateContent` | Gemini API |
+| Format      | Endpoint used                                 | Works with                                                                                                                                              |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `openai`    | `{base}/chat/completions`                     | OpenAI, OpenRouter, Groq, DeepSeek, Together, Fireworks, xAI, Mistral, **Ollama**, **LM Studio**, vLLM, llama.cpp, LiteLLM — anything OpenAI-compatible |
+| `anthropic` | `{base}/v1/messages`                          | Anthropic, and gateways that proxy it                                                                                                                   |
+| `google`    | `{base}/models/{model}:streamGenerateContent` | Gemini API                                                                                                                                              |
 
 **Add custom provider** → set the format and base URL → paste the key →
 **Fetch list** to pull the server's own model catalogue, or type model ids by
@@ -100,11 +100,11 @@ bigger conversation view and wanting to hold the agent back are unrelated
 wishes. **Read-only** withholds every mutating tool from the model — a hard
 boundary no allow rule can unlock. Otherwise, how much it asks is set by:
 
-| Edits | Behaviour |
-| --- | --- |
+| Edits              | Behaviour                                                                 |
+| ------------------ | ------------------------------------------------------------------------- |
 | `review` (default) | Changes apply immediately and collect in the review screen. Cursor-style. |
-| `ask` | A dialog with the diff before every single edit. Claude Code-style. |
-| `auto` | Applied silently. |
+| `ask`              | A dialog with the diff before every single edit. Claude Code-style.       |
+| `auto`             | Applied silently.                                                         |
 
 Shell commands have their own `ask` / `auto` switch, because "let it edit
 freely" and "let it run anything" are different levels of trust.
@@ -114,7 +114,7 @@ freely" and "let it run anything" are different levels of trust.
 `Ctrl+Shift+R`, the `N to review` pill, or `/changes`.
 
 One card per file with its diff, **Keep** or **Revert** per file, plus keep-all
-and revert-all. Revert restores the content from *before the agent's first*
+and revert-all. Revert restores the content from _before the agent's first_
 change to that file, so a run of edits to one file still reverts cleanly in one
 step.
 
@@ -132,7 +132,7 @@ Paste or drag anything into the composer:
 - **Screenshots and images** — pasted straight from the clipboard, downscaled to
   1568px on the long edge (larger is downsampled server-side anyway) and sent as
   real image blocks. Thumbnails appear in the composer and in the transcript.
-- **Files** — attached by *path*, not by content, so the agent reads exactly as
+- **Files** — attached by _path_, not by content, so the agent reads exactly as
   much as it needs with its normal tools. A pasted file counts as you naming
   that path, so it needs no separate approval even outside the workspace.
 - **Long text** — a paste over ~24 lines collapses into a chip instead of
@@ -179,11 +179,11 @@ cannot know the limits of.
 ## Files anywhere on your machine
 
 **A path you typed yourself needs no approval.** Write `fix C:\proj\main.py` and
-the agent opens it immediately: naming the file *is* the authorisation, and a
+the agent opens it immediately: naming the file _is_ the authorisation, and a
 dialog for the file you just asked about is friction with no safety value. The
 path has to actually exist, so prose that looks path-shaped is ignored.
 
-Any *other* outside location — one the agent went looking for on its own —
+Any _other_ outside location — one the agent went looking for on its own —
 opens an approval dialog. **Always allow** remembers that folder under
 Settings → Permissions.
 
@@ -243,14 +243,14 @@ its reply is waiting when you come back.
 
 ## Getting around
 
-| | |
-| --- | --- |
-| `Ctrl+P` | Go to file. Fuzzy — type initials, or part of a path. |
-| `Ctrl+Shift+P` | Command palette. Everything the app can do, by name. |
-| `Ctrl+Shift+O` | Go to a symbol in the open file. |
+|                |                                                       |
+| -------------- | ----------------------------------------------------- |
+| `Ctrl+P`       | Go to file. Fuzzy — type initials, or part of a path. |
+| `Ctrl+Shift+P` | Command palette. Everything the app can do, by name.  |
+| `Ctrl+Shift+O` | Go to a symbol in the open file.                      |
 | `Ctrl+Shift+F` | Search across every file, with results you can click. |
-| `Ctrl+L` | Quote the editor selection into the chat. |
-| `Ctrl+K` | Ask for a change to the selection, in place. |
+| `Ctrl+L`       | Quote the editor selection into the chat.             |
+| `Ctrl+K`       | Ask for a change to the selection, in place.          |
 
 The matcher ranks rather than filters: typing `cts` finds
 `components/ChatToolStrip.tsx` because those letters begin words, and `store`
@@ -304,9 +304,9 @@ every time, a red dot sits in the status bar for as long as a session is running
 and takes you straight to the stop button, and quitting the app ends it. There is
 no setting that leaves it on.
 
-| Level | What the agent gets |
-| --- | --- |
-| Watch only | One tool: take a screenshot. It cannot touch anything. |
+| Level             | What the agent gets                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Watch only        | One tool: take a screenshot. It cannot touch anything.                                                |
 | Watch and control | Also click, drag, type, press keys and scroll — the real mouse and keyboard, anywhere on the machine. |
 
 The acting tools are not merely refused in a watch-only session; they are not
@@ -352,11 +352,11 @@ notification when the window is not in front.
 Because nobody is there to answer a permission dialog, what a task may touch is
 decided when you write it, not while it runs:
 
-| Level | What it can do |
-| --- | --- |
-| Read only | Looks, never changes. The mutating tools are not offered to the model at all. |
-| Edit files | Writes to the workspace. Cannot run commands or reach outside the folder. |
-| Everything | Runs commands with no approval, on a schedule, whether or not you are there. |
+| Level      | What it can do                                                                |
+| ---------- | ----------------------------------------------------------------------------- |
+| Read only  | Looks, never changes. The mutating tools are not offered to the model at all. |
+| Edit files | Writes to the workspace. Cannot run commands or reach outside the folder.     |
+| Everything | Runs commands with no approval, on a schedule, whether or not you are there.  |
 
 Read only is the default. Schedules are a timer, a daily time, chosen weekdays,
 or a single run — no cron expressions. A run that was missed while the app was
@@ -372,20 +372,20 @@ read into the system prompt automatically. `/init` asks the agent to write one.
 
 ## Keyboard
 
-| | |
-| --- | --- |
-| `Ctrl` `1` / `Ctrl` `2` | Chat / Edit mode |
-| `Ctrl` `O` | Open folder |
-| `Ctrl` `N` | New conversation |
-| `Ctrl` `,` | Settings |
-| `Ctrl` `` ` `` | Terminal |
-| `Ctrl` `B` | Toggle sidebar |
-| `Ctrl` `Shift` `G` | Source control |
-| `Ctrl` `Shift` `R` | Review screen |
-| `Ctrl` `S` | Save file |
-| `Enter` / `Shift`+`Enter` | Send / newline |
-| `Esc` | Interrupt the running turn |
-| `Ctrl`+`Enter` / `Esc` | Allow / reject in the permission dialog |
+|                           |                                         |
+| ------------------------- | --------------------------------------- |
+| `Ctrl` `1` / `Ctrl` `2`   | Chat / Edit mode                        |
+| `Ctrl` `O`                | Open folder                             |
+| `Ctrl` `N`                | New conversation                        |
+| `Ctrl` `,`                | Settings                                |
+| `Ctrl` `` ` ``            | Terminal                                |
+| `Ctrl` `B`                | Toggle sidebar                          |
+| `Ctrl` `Shift` `G`        | Source control                          |
+| `Ctrl` `Shift` `R`        | Review screen                           |
+| `Ctrl` `S`                | Save file                               |
+| `Enter` / `Shift`+`Enter` | Send / newline                          |
+| `Esc`                     | Interrupt the running turn              |
+| `Ctrl`+`Enter` / `Esc`    | Allow / reject in the permission dialog |
 
 ## Stability
 
@@ -476,11 +476,7 @@ npm version patch && git push --follow-tags
 
 - **Builds are unsigned.** Windows SmartScreen and macOS Gatekeeper will warn on
   first run until certificates are added to the release workflow.
-- **Thinking blocks are not replayed.** Anthropic requires the original signature
-  to send one back in a later turn and we do not persist it, so thinking is shown
-  but dropped from history.
-- **Token counts are estimated** for context budgeting (characters ÷ 3.4). The
-  status bar shows the provider's own numbers, not the estimate.
+- **Context token counts are estimates.** Billing and the status bar use the provider's own usage numbers; local estimates are only used to decide when to trim.
 - No inline Cursor-Tab-style completions, no hunk-level accept inside a file, no
   MCP resources or prompts (tools only).
 

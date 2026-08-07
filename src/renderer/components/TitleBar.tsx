@@ -2,6 +2,7 @@ import { useStore } from '../store'
 import { useT } from '../i18n'
 import BrandMark from './BrandMark'
 import Spinner from './Spinner'
+import { chooseWorkspace } from '../workspace'
 
 export default function TitleBar() {
   const t = useT()
@@ -13,13 +14,6 @@ export default function TitleBar() {
   const running = useStore((state) => state.running)
   const changeCount = useStore((state) => state.changes.length)
 
-  const pickFolder = async (): Promise<void> => {
-    const result = await window.forge.workspace.pick()
-    if (!result) return
-    // The whole view is workspace-scoped, so a reload is the cleanest reset.
-    window.location.reload()
-  }
-
   return (
     <div className="titlebar">
       <div className="brand">
@@ -28,7 +22,11 @@ export default function TitleBar() {
         {running && <Spinner className="brand-spinner" />}
       </div>
 
-      <button className="workspace-btn" onClick={pickFolder} title="Open a different folder">
+      <button
+        className="workspace-btn"
+        onClick={() => void chooseWorkspace()}
+        title="Open a different folder"
+      >
         <span>{bootstrap?.workspaceName ?? '—'}</span>
         <span className="path">{bootstrap?.cwd ?? ''}</span>
       </button>

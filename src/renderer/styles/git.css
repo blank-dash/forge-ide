@@ -1,0 +1,85 @@
+/* Git panel                                                           */
+/* ------------------------------------------------------------------ */
+
+.git-branch {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 4px;
+}
+.git-track {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.git-commit {
+  flex: none;
+  padding: 4px 10px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.git-group {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fg-3);
+}
+
+.git-state {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.git-modified {
+  color: var(--yellow);
+}
+.git-added {
+  color: var(--green);
+}
+.git-deleted {
+  color: var(--red);
+}
+.git-untracked {
+  color: var(--fg-3);
+}
+.git-renamed {
+  color: var(--blue);
+}
+.git-conflict {
+  color: var(--red);
+}
+
+.git-diff {
+  flex: none;
+  max-height: 42%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.git-diff-body {
+  flex: 1;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  white-space: pre;
+  background: var(--bg-inset);
+}
+
+.diff-meta {
+  color: var(--fg-3);
+}
+.diff-hunk {
+  color: var(--blue);
+}
+
+/* ------------------------------------------------------------------ */

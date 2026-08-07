@@ -16,11 +16,17 @@ export interface ToolSchema {
 export interface CompletionRequest {
   provider: ProviderConfig
   model: ModelConfig
+  /** Stable for the life of one conversation; provider caches key from it. */
+  sessionId?: string
   system: string
   messages: Message[]
   tools: ToolSchema[]
   maxOutputTokens: number
   temperature: number
+  continuation?: string
+  /** Request timeouts are provider-level defaults; adapters can override them. */
+  firstByteTimeoutMs?: number
+  chunkTimeoutMs?: number
   /** How hard to think, as the user set it. */
   effort: ReasoningEffort
   /** Effort resolved to a token budget; 0 disables thinking entirely. */
@@ -32,6 +38,8 @@ export interface CompletionRequest {
 export type ProviderEvent =
   | { type: 'text'; text: string }
   | { type: 'thinking'; text: string }
+  | { type: 'thinking_signature'; signature: string }
+  | { type: 'redacted_thinking'; data: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
   | {
       type: 'usage'
@@ -50,7 +58,9 @@ export type ProviderEvent =
  * you have left. Anthropic and OpenAI-compatible endpoints use different
  * names for the same idea; Gemini sends none.
  */
-export function readRateLimit(headers: Headers): Omit<RateLimit, 'providerId' | 'updatedAt'> | null {
+export function readRateLimit(
+  headers: Headers
+): Omit<RateLimit, 'providerId' | 'updatedAt'> | null {
   const num = (...names: string[]): number | undefined => {
     for (const name of names) {
       const raw = headers.get(name)
@@ -96,6 +106,8 @@ export interface ProviderAdapter {
  * objects are merged one level deep so a user can add a single key to
  * `generationConfig` without having to restate the whole object.
  */
+const PROTECTED_BODY_KEYS = new Set(['messages', 'stream', 'model', 'system', 'tools'])
+
 export function applyExtraBody(
   body: Record<string, unknown>,
   extra: Record<string, unknown> | undefined
@@ -103,6 +115,10 @@ export function applyExtraBody(
   if (!extra) return body
 
   for (const [key, value] of Object.entries(extra)) {
+    if (PROTECTED_BODY_KEYS.has(key)) {
+      console.warn(`[provider] ignored protected extraBody key: ${key}`)
+      continue
+    }
     const current = body[key]
     if (isPlainObject(current) && isPlainObject(value)) {
       body[key] = { ...current, ...value }
@@ -121,10 +137,53 @@ export class ProviderError extends Error {
   constructor(
     message: string,
     readonly status?: number,
-    readonly detail?: string
+    readonly detail?: string,
+    readonly retryAfterMs?: number,
+    readonly timeoutMs?: number
   ) {
     super(message)
     this.name = 'ProviderError'
+  }
+}
+
+export function retryAfterMs(headers: Headers, now = Date.now()): number | undefined {
+  const raw = headers.get('retry-after')
+  if (raw) {
+    const seconds = Number(raw)
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
+    const date = Date.parse(raw)
+    if (Number.isFinite(date)) return Math.max(0, date - now)
+  }
+
+  const reset = headers.get('anthropic-ratelimit-tokens-reset')
+  const date = reset ? Date.parse(reset) : Number.NaN
+  return Number.isFinite(date) ? Math.max(0, date - now) : undefined
+}
+
+export function retryDelay(error: unknown, attempt: number, random = Math.random): number {
+  const provider = error as { status?: number; retryAfterMs?: number }
+  const base =
+    provider.status === 429 && provider.retryAfterMs !== undefined
+      ? provider.retryAfterMs
+      : 800 * 2 ** Math.max(0, attempt - 1)
+  return Math.max(100, Math.round(base * (0.8 + random() * 0.4)))
+}
+
+/** Infinite reconnect loop with 10s cooldown for proxy/network failures. */
+export async function fetchWithReconnect(
+  url: string,
+  init?: RequestInit,
+  onError?: (error: Error) => void
+): Promise<Response> {
+  let lastError: Error | null = null
+  while (true) {
+    try {
+      return await fetch(url, init)
+    } catch (error) {
+      lastError = error as Error
+      onError?.(lastError)
+      await new Promise((resolve) => setTimeout(resolve, 10_000))
+    }
   }
 }
 
@@ -151,6 +210,7 @@ export async function toProviderError(res: Response, providerName: string): Prom
   return new ProviderError(
     `${providerName} request failed (HTTP ${res.status}). ${hint}`.trim(),
     res.status,
-    detail.slice(0, 4000)
+    detail.slice(0, 4000),
+    retryAfterMs(res.headers)
   )
 }

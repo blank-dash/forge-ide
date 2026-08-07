@@ -1,0 +1,70 @@
+/* Voice                                                               */
+/* ------------------------------------------------------------------ */
+
+.mic-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* No text selection while holding to talk: a drag across the button would
+     otherwise select the label instead of recording. */
+  user-select: none;
+}
+.mic-btn.recording {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 55%, transparent);
+  background: color-mix(in oklab, var(--red) 12%, transparent);
+}
+.mic-glyph {
+  font-size: 11px;
+  line-height: 1;
+}
+.mic-btn.recording .mic-glyph {
+  animation: live-pulse 1.2s ease-in-out infinite;
+}
+.mic-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+/* The per-reply speaker sits beside the cost line rather than in the text. */
+.turn-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.turn-footer .turn-stats {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.speak-btn {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: var(--fg-3);
+  opacity: 0;
+  transition:
+    opacity 120ms var(--ease),
+    color 120ms var(--ease);
+}
+/* Revealed on hover: a speaker icon on every reply is noise until wanted. */
+.msg:hover .speak-btn,
+.speak-btn:focus-visible {
+  opacity: 1;
+}
+.speak-btn:hover {
+  color: var(--accent);
+}
+
+/* The Live pill carries the same red as the status-bar badge, so the two read
+   as one state rather than two unrelated indicators. */
+.pill.live-on {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 55%, transparent);
+  background: color-mix(in oklab, var(--red) 12%, transparent);
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------------ */

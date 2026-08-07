@@ -66,7 +66,11 @@ export default function ProfileMenu() {
       label: t('Check for updates'),
       onSelect: async () => {
         patchUi({ settingsOpen: true, settingsSection: 'about' })
-        await window.forge.updates.check().catch(() => undefined)
+        await window.forge.updates
+          .check()
+          .catch((error) =>
+            useStore.getState().pushError(`Update check failed: ${(error as Error).message}`)
+          )
       }
     },
     {

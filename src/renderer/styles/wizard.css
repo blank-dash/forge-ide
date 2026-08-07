@@ -1,0 +1,156 @@
+/* First-run wizard                                                    */
+/* ------------------------------------------------------------------ */
+
+.wizard {
+  width: min(780px, 92vw);
+  flex-direction: row;
+  min-height: 480px;
+}
+
+.wizard-rail {
+  width: 210px;
+  flex: none;
+  background: var(--bg-0);
+  border-right: 1px solid var(--border);
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.wizard-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.wizard-brand svg {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: block;
+}
+
+.wizard-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: step;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.wizard-steps li {
+  counter-increment: step;
+  padding: 6px 10px 6px 0;
+  font-size: 12.5px;
+  color: var(--fg-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wizard-steps li::before {
+  content: counter(step);
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-family: var(--mono);
+}
+.wizard-steps li.active {
+  color: var(--fg-0);
+}
+.wizard-steps li.active::before {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.wizard-body {
+  flex: 1;
+  padding: 26px 28px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.wizard-body h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.wizard-body > p {
+  margin: 0 0 20px;
+  color: var(--fg-2);
+  font-size: 13px;
+  line-height: 1.65;
+  max-width: 56ch;
+}
+
+.wizard-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.wizard-list {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  color: var(--fg-2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.wizard-list strong {
+  color: var(--fg-0);
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  color: var(--fg-1);
+  transition: all 120ms var(--ease);
+}
+.theme-card:hover {
+  border-color: var(--fg-3);
+}
+.theme-card.active {
+  border-color: var(--accent);
+  color: var(--fg-0);
+}
+
+.theme-swatch {
+  width: 34px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  flex: none;
+}
+.theme-swatch.warm-dark {
+  background: linear-gradient(135deg, #141413 45%, #232320 45%);
+}
+.theme-swatch.dash {
+  background: linear-gradient(135deg, #061a23 45%, #7fd4f0 45%);
+}
+.theme-swatch.true-black {
+  background: linear-gradient(135deg, #000 45%, #1a1a1a 45%);
+}
+.theme-swatch.high-contrast {
+  background: linear-gradient(135deg, #000 45%, #fff 45%);
+}
+.theme-swatch.midnight {
+  background: linear-gradient(135deg, #0d1117 45%, #242c38 45%);
+}
+.theme-swatch.light {
+  background: linear-gradient(135deg, #faf9f6 45%, #efeee9 45%);
+}
+
+/* ------------------------------------------------------------------ */

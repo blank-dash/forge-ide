@@ -34,7 +34,12 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }): JSX.Elemen
             </span>
           )}
         </span>
-        <PromptActions entry={entry} sessionId={sessionId} onDelete={() => removeEntry(entry.id)} onError={pushError} />
+        <PromptActions
+          entry={entry}
+          sessionId={sessionId}
+          onDelete={() => removeEntry(entry.id)}
+          onError={pushError}
+        />
       </div>
     )
   }
@@ -94,7 +99,9 @@ function PromptActions({
       <button
         className="prompt-action"
         onClick={() =>
-          void window.forge.agent.send(text, [], sessionId ?? undefined).catch((error: Error) => onError(error.message))
+          void window.forge.agent
+            .send(text, [], sessionId ?? undefined)
+            .catch((error: Error) => onError(error.message))
         }
       >
         Send again
@@ -157,7 +164,7 @@ function SpeakButton({ entry }: { entry: ChatEntry }): JSX.Element | null {
     // Sharing a screen means you are looking at something else. Reading the
     // reply aloud is the whole point of the mode, so it does not wait for the
     // "read every reply" preference to have been found and switched on.
-    const wanted = voice.autoSpeak || live?.active === true && live.sessionId === sessionId
+    const wanted = voice.autoSpeak || (live?.active === true && live.sessionId === sessionId)
     if (!wanted || voice.speak === 'off' || spoken.current || !text.trim()) return
 
     spoken.current = true

@@ -192,12 +192,7 @@ function TaskRow({ task, busy, onEdit, onRemove, onRun, onToggle }: RowProps) {
   return (
     <div className={`task-row ${task.enabled ? '' : 'off'}`}>
       <label className="switch task-toggle" title={t('Enabled')}>
-        <input
-          type="checkbox"
-          checked={task.enabled}
-          disabled={task.running}
-          onChange={onToggle}
-        />
+        <input type="checkbox" checked={task.enabled} disabled={task.running} onChange={onToggle} />
       </label>
 
       <button className="task-main" onClick={onEdit}>
@@ -232,11 +227,20 @@ function TaskRow({ task, busy, onEdit, onRemove, onRun, onToggle }: RowProps) {
 
       <div className="task-actions">
         {task.lastRun?.sessionId && (
-          <button className="icon-btn" title={t('Open the last run')} onClick={() => void openRun()}>
+          <button
+            className="icon-btn"
+            title={t('Open the last run')}
+            onClick={() => void openRun()}
+          >
             ↗
           </button>
         )}
-        <button className="icon-btn" title={t('Run now')} disabled={busy || task.running} onClick={onRun}>
+        <button
+          className="icon-btn"
+          title={t('Run now')}
+          disabled={busy || task.running}
+          onClick={onRun}
+        >
           {busy || task.running ? <Spinner /> : '▷'}
         </button>
 
@@ -250,7 +254,11 @@ function TaskRow({ task, busy, onEdit, onRemove, onRun, onToggle }: RowProps) {
             </button>
           </>
         ) : (
-          <button className="icon-btn danger" title={t('Delete')} onClick={() => setConfirming(true)}>
+          <button
+            className="icon-btn danger"
+            title={t('Delete')}
+            onClick={() => setConfirming(true)}
+          >
             ×
           </button>
         )}
@@ -392,7 +400,11 @@ function TaskEditor({ task, onCancel, onSave }: EditorProps) {
         <button className="btn ghost" onClick={onCancel}>
           {t('Cancel')}
         </button>
-        <button className="btn btn-primary" disabled={problem !== null} onClick={() => onSave(draft)}>
+        <button
+          className="btn btn-primary"
+          disabled={problem !== null}
+          onClick={() => onSave(draft)}
+        >
           {t('Save task')}
         </button>
       </div>

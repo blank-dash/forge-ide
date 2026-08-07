@@ -50,9 +50,12 @@ export async function runOutlineTests(
   })
 
   await test('control flow is never mistaken for a declaration', () => {
-    const source = ['  if (ready) {', '  for (const x of y) {', '  while (true) {', '  } catch (e) {'].join(
-      '\n'
-    )
+    const source = [
+      '  if (ready) {',
+      '  for (const x of y) {',
+      '  while (true) {',
+      '  } catch (e) {'
+    ].join('\n')
     assert.deepEqual(names(source), [])
   })
 

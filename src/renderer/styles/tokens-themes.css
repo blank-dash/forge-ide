@@ -1,0 +1,198 @@
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --accent: #d97757;
+
+  --bg-0: #141413; /* window chrome */
+  --bg-1: #1a1a18; /* panels */
+  --bg-2: #232320; /* raised surfaces */
+  --bg-3: #2c2c28; /* hover */
+  --bg-inset: #100f0e;
+
+  --fg-0: #ededeb;
+  --fg-1: #b4b1a9;
+  --fg-2: #85817a;
+  --fg-3: #5d5a55;
+
+  --border: #2e2e2a;
+  --border-strong: #3d3c37;
+
+  --green: #7fb069;
+  --green-bg: rgba(127, 176, 105, 0.12);
+  --red: #d05a5a;
+  --red-bg: rgba(208, 90, 90, 0.12);
+  --yellow: #d4a24e;
+  --blue: #6a9fdc;
+  --purple: #a98fd0;
+
+  /* Both shipped with the app вЂ” see main.tsx. */
+  --mono: 'JetBrains Mono Variable', 'Cascadia Code', 'SF Mono', Consolas, ui-monospace, monospace;
+  --sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --chat-size: 13px;
+  --editor-size: 13px;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Dash вЂ” the DashConnect palette: deep teal-black, cool neutrals, and a
+ * drifting particle field behind the chrome.
+ */
+:root[data-theme='dash'] {
+  --bg-0: #061a23;
+  --bg-1: #08222d;
+  --bg-2: #0d2c39;
+  --bg-3: #143b4b;
+  --bg-inset: #041219;
+
+  --fg-0: #ffffff;
+  --fg-1: #c9d6dc;
+  --fg-2: #8ba3ad;
+  --fg-3: #5d757f;
+
+  --border: #10303d;
+  --border-strong: #1b465a;
+
+  --accent: #7fd4f0;
+  --green: #6fd6a0;
+  --red: #ff7a7a;
+  --yellow: #ffcc70;
+  --blue: #7fd4f0;
+
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+
+/*
+ * The particle field. Three layers of radial dots at different scales, drifting
+ * at different speeds вЂ” cheap parallax with no canvas and no JavaScript, so it
+ * costs nothing on a machine already running a compiler.
+ */
+:root[data-theme='dash'] body::before {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1.6px 1.6px at 20% 30%, rgba(127, 212, 240, 0.5) 50%, transparent 50%),
+    radial-gradient(1.2px 1.2px at 70% 65%, rgba(255, 255, 255, 0.35) 50%, transparent 50%),
+    radial-gradient(2.2px 2.2px at 45% 80%, rgba(127, 212, 240, 0.28) 50%, transparent 50%);
+  background-size:
+    220px 220px,
+    150px 150px,
+    320px 320px;
+  animation: dash-drift 90s linear infinite;
+}
+
+@keyframes dash-drift {
+  to {
+    transform: translate3d(120px, -160px, 0);
+  }
+}
+
+/* The chrome floats above the field. */
+:root[data-theme='dash'] .app {
+  position: relative;
+  z-index: 1;
+}
+:root[data-theme='dash'] .titlebar,
+:root[data-theme='dash'] .statusbar,
+:root[data-theme='dash'] .sidebar,
+:root[data-theme='dash'] .chat,
+:root[data-theme='dash'] .chat-full {
+  background: color-mix(in oklab, var(--bg-1) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='dash'] body::before {
+    animation: none;
+  }
+}
+
+/* True black вЂ” for OLED panels, where #000 costs no light at all. */
+:root[data-theme='true-black'] {
+  --bg-0: #000000;
+  --bg-1: #000000;
+  --bg-2: #0d0d0d;
+  --bg-3: #1a1a1a;
+  --bg-inset: #000000;
+
+  --fg-0: #e8e8e8;
+  --fg-1: #a8a8a8;
+  --fg-2: #787878;
+  --fg-3: #545454;
+
+  --border: #1c1c1c;
+  --border-strong: #2b2b2b;
+}
+
+/* Deliberately louder separation for bright rooms and tired eyes. */
+:root[data-theme='high-contrast'] {
+  --bg-0: #000000;
+  --bg-1: #060606;
+  --bg-2: #141414;
+  --bg-3: #242424;
+  --bg-inset: #000000;
+
+  --fg-0: #ffffff;
+  --fg-1: #d8d8d8;
+  --fg-2: #a8a8a8;
+  --fg-3: #7c7c7c;
+
+  --border: #3a3a3a;
+  --border-strong: #585858;
+
+  --green: #6ee06e;
+  --red: #ff6b6b;
+  --yellow: #ffd166;
+  --blue: #7ab8ff;
+}
+
+/* Cool blue-black, closer to most editor defaults. */
+:root[data-theme='midnight'] {
+  --bg-0: #0d1117;
+  --bg-1: #11161d;
+  --bg-2: #1a212b;
+  --bg-3: #242c38;
+  --bg-inset: #090d13;
+
+  --fg-0: #e6edf3;
+  --fg-1: #adbac7;
+  --fg-2: #768390;
+  --fg-3: #545d68;
+
+  --border: #21262d;
+  --border-strong: #30363d;
+
+  --blue: #6cb6ff;
+}
+
+:root[data-theme='light'] {
+  --bg-0: #f5f4f0;
+  --bg-1: #faf9f6;
+  --bg-2: #efeee9;
+  --bg-3: #e4e2db;
+  --bg-inset: #ffffff;
+
+  --fg-0: #1f1e1c;
+  --fg-1: #4a4843;
+  --fg-2: #757169;
+  --fg-3: #9b968c;
+
+  --border: #e0ded7;
+  --border-strong: #cdcac1;
+
+  --green: #4a8a3a;
+  --green-bg: rgba(74, 138, 58, 0.1);
+  --red: #b03e3e;
+  --red-bg: rgba(176, 62, 62, 0.1);
+}

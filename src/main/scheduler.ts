@@ -75,10 +75,13 @@ export class Scheduler {
 
     // Long waits hop rather than overflow. Each hop re-reads the task list, so
     // an edit made in the meantime is picked up anyway.
-    this.timer = this.deps.setTimer(() => {
-      this.timer = null
-      void this.tick()
-    }, Math.min(delay, MAX_TIMER_MS))
+    this.timer = this.deps.setTimer(
+      () => {
+        this.timer = null
+        void this.tick()
+      },
+      Math.min(delay, MAX_TIMER_MS)
+    )
   }
 
   /** Runs everything due right now, then re-arms. */

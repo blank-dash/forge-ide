@@ -35,11 +35,14 @@ export default function VoiceSettings({ draft, patch }: Props) {
    * would turn a wrong choice into a puzzling 404 rather than an absence.
    */
   const speechProviders = useMemo(
-    () => draft.providers.filter((entry) => entry.kind === 'openai' && entry.enabled && entry.apiKey),
+    () =>
+      draft.providers.filter((entry) => entry.kind === 'openai' && entry.enabled && entry.apiKey),
     [draft.providers]
   )
 
-  const modelOptions = (models: string[]): Array<{ value: string; label: string; hint?: string }> => [
+  const modelOptions = (
+    models: string[]
+  ): Array<{ value: string; label: string; hint?: string }> => [
     { value: '', label: t('Not set') },
     ...speechProviders.flatMap((provider) =>
       models.map((model) => ({

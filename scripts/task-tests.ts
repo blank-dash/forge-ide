@@ -199,7 +199,10 @@ export async function runTaskTests(
   })
 
   await test('a task model override wins, and an empty one changes nothing', () => {
-    assert.equal(settingsForTask(settings(), 'read-only', 'openai:gpt-4.1').activeModel, 'openai:gpt-4.1')
+    assert.equal(
+      settingsForTask(settings(), 'read-only', 'openai:gpt-4.1').activeModel,
+      'openai:gpt-4.1'
+    )
     assert.equal(settingsForTask(settings(), 'read-only', '').activeModel, MODEL)
   })
 
@@ -281,7 +284,11 @@ export async function runTaskTests(
     const task = normaliseTask({ prompt: 'x' }, 1_000, null)
 
     assert.equal(task.name, 'Untitled task')
-    assert.equal(task.permission, 'read-only', 'the default must be the level that cannot break anything')
+    assert.equal(
+      task.permission,
+      'read-only',
+      'the default must be the level that cannot break anything'
+    )
     assert.equal(task.enabled, true)
   })
 

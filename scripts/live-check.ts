@@ -151,7 +151,11 @@ app.whenReady().then(async () => {
     () => undefined
   )
 
-  await expectRejection('nothing can be looked at before a session starts', () => live.look(), /not running/i)
+  await expectRejection(
+    'nothing can be looked at before a session starts',
+    () => live.look(),
+    /not running/i
+  )
 
   await live.start(screenSource.id, 'watch')
 

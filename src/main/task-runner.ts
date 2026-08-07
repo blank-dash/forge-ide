@@ -162,9 +162,10 @@ class Collector {
   summary(): string {
     for (let index = this.order.length - 1; index >= 0; index--) {
       const text = (this.texts.get(this.order[index]) ?? '').trim()
-      if (text) return text.length > MAX_SUMMARY_CHARS
-        ? `${text.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…`
-        : text
+      if (text)
+        return text.length > MAX_SUMMARY_CHARS
+          ? `${text.slice(0, MAX_SUMMARY_CHARS).trimEnd()}…`
+          : text
     }
     return ''
   }

@@ -42,6 +42,7 @@ export const openaiAdapter: ProviderAdapter = {
     // for usage accounting.
     if (!isLocal(provider.baseUrl)) {
       body.stream_options = { include_usage: true }
+      if (req.sessionId) body.prompt_cache_key = `forge:${req.sessionId}`
     }
 
     if (req.tools.length > 0) {
@@ -77,7 +78,7 @@ export const openaiAdapter: ProviderAdapter = {
     const calls = new Map<number, { id: string; name: string; args: string }>()
     let stopReason = 'stop'
 
-    for await (const frame of readSse(res.body)) {
+    for await (const frame of readSse(res.body, req.chunkTimeoutMs ?? 120_000)) {
       if (frame.data === '[DONE]') break
       const chunk = safeParse<OpenAiChunk>(frame.data)
       if (!chunk) continue

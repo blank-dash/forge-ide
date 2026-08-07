@@ -50,7 +50,11 @@ export default function PermissionDialog() {
         </div>
 
         <div className="dialog-body">
-          {isDiff ? <DiffView diff={request.detail} /> : <div className="code-box">{request.detail}</div>}
+          {isDiff ? (
+            <DiffView diff={request.detail} />
+          ) : (
+            <div className="code-box">{request.detail}</div>
+          )}
 
           <div className="field" style={{ marginTop: 14, marginBottom: 0 }}>
             <label>Reject with feedback (optional)</label>

@@ -10,6 +10,7 @@ import {
 } from './types'
 
 const API_VERSION = '2023-06-01'
+const PROVIDER_TIMEOUT_MS = 120_000
 
 /** Anthropic Messages API — also matches Bedrock/Vertex proxies and LiteLLM. */
 export const anthropicAdapter: ProviderAdapter = {
@@ -22,121 +23,141 @@ export const anthropicAdapter: ProviderAdapter = {
     const body: Record<string, unknown> = {
       model: model.id,
       max_tokens: Math.min(req.maxOutputTokens, model.maxOutputTokens),
-      system: req.system,
+      system: [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }],
       messages: req.messages.map(toAnthropicMessage).filter((msg) => msg.content.length > 0),
       stream: true
     }
 
     if (req.tools.length > 0) {
-      body.tools = req.tools.map((tool) => ({
+      body.tools = req.tools.map((tool, index, all) => ({
         name: tool.name,
         description: tool.description,
-        input_schema: tool.parameters
+        input_schema: tool.parameters,
+        ...(index === all.length - 1 ? { cache_control: { type: 'ephemeral' } } : {})
       }))
     }
 
     if (thinkingOn) {
       // Thinking requires max_tokens > budget and forbids temperature.
       body.thinking = { type: 'enabled', budget_tokens: req.thinkingBudget }
-      body.max_tokens = Math.max(
-        req.thinkingBudget + 4096,
-        body.max_tokens as number
-      )
+      body.max_tokens = Math.max(req.thinkingBudget + 4096, body.max_tokens as number)
     } else {
       body.temperature = req.temperature
     }
 
     applyExtraBody(body, model.extraBody)
 
-    const res = await fetch(`${provider.baseUrl}/v1/messages`, {
-      method: 'POST',
-      signal: req.signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': provider.apiKey,
-        'anthropic-version': API_VERSION,
-        ...provider.headers
-      },
-      body: JSON.stringify(body)
-    })
+    const requestController = new AbortController()
+    const abortRequest = (): void => requestController.abort(req.signal.reason)
+    req.signal.addEventListener('abort', abortRequest, { once: true })
+    const timeout = setTimeout(
+      () => requestController.abort(new Error('Anthropic request timed out.')),
+      req.firstByteTimeoutMs ?? PROVIDER_TIMEOUT_MS
+    )
+    timeout.unref?.()
 
-    if (!res.ok || !res.body) throw await toProviderError(res, provider.name)
+    const cleanup = (): void => {
+      clearTimeout(timeout)
+      req.signal.removeEventListener('abort', abortRequest)
+    }
 
-    const limit = readRateLimit(res.headers)
-    if (limit) yield { type: 'limits', limit }
+    try {
+      const res = await fetch(`${provider.baseUrl}/v1/messages`, {
+        method: 'POST',
+        signal: requestController.signal,
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': provider.apiKey,
+          'anthropic-version': API_VERSION,
+          ...provider.headers
+        },
+        body: JSON.stringify(body)
+      })
 
-    // tool_use inputs arrive as a stream of partial JSON fragments keyed by
-    // content block index; buffer them until content_block_stop.
-    const pending = new Map<number, { id: string; name: string; json: string }>()
+      if (!res.ok || !res.body) throw await toProviderError(res, provider.name)
 
-    for await (const frame of readSse(res.body)) {
-      const evt = safeParse<AnthropicStreamEvent>(frame.data)
-      if (!evt) continue
+      const limit = readRateLimit(res.headers)
+      if (limit) yield { type: 'limits', limit }
 
-      switch (evt.type) {
-        case 'content_block_start': {
-          const block = evt.content_block
-          if (block?.type === 'tool_use') {
-            pending.set(evt.index, { id: block.id, name: block.name, json: '' })
+      // tool_use inputs arrive as a stream of partial JSON fragments keyed by
+      // content block index; buffer them until content_block_stop.
+      const pending = new Map<number, { id: string; name: string; json: string }>()
+
+      for await (const frame of readSse(res.body, req.chunkTimeoutMs ?? 120_000)) {
+        const evt = safeParse<AnthropicStreamEvent>(frame.data)
+        if (!evt) continue
+
+        switch (evt.type) {
+          case 'content_block_start': {
+            const block = evt.content_block
+            if (block?.type === 'tool_use') {
+              pending.set(evt.index, { id: block.id, name: block.name, json: '' })
+            }
+            break
           }
-          break
-        }
 
-        case 'content_block_delta': {
-          const delta = evt.delta
-          if (!delta) break
-          if (delta.type === 'text_delta' && delta.text) {
-            yield { type: 'text', text: delta.text }
-          } else if (delta.type === 'thinking_delta' && delta.thinking) {
-            yield { type: 'thinking', text: delta.thinking }
-          } else if (delta.type === 'input_json_delta') {
+          case 'content_block_delta': {
+            const delta = evt.delta
+            if (!delta) break
+            if (delta.type === 'text_delta' && delta.text) {
+              yield { type: 'text', text: delta.text }
+            } else if (delta.type === 'thinking_delta' && delta.thinking) {
+              yield { type: 'thinking', text: delta.thinking }
+            } else if (delta.type === 'signature_delta' && delta.signature) {
+              yield { type: 'thinking_signature', signature: delta.signature }
+            } else if (delta.type === 'redacted_thinking' && delta.data) {
+              yield { type: 'redacted_thinking', data: delta.data }
+            } else if (delta.type === 'input_json_delta') {
+              const slot = pending.get(evt.index)
+              if (slot) slot.json += delta.partial_json ?? ''
+            }
+            break
+          }
+
+          case 'content_block_stop': {
             const slot = pending.get(evt.index)
-            if (slot) slot.json += delta.partial_json ?? ''
-          }
-          break
-        }
-
-        case 'content_block_stop': {
-          const slot = pending.get(evt.index)
-          if (slot) {
-            pending.delete(evt.index)
-            yield {
-              type: 'tool_use',
-              id: slot.id,
-              name: slot.name,
-              input: safeParse<Record<string, unknown>>(slot.json || '{}') ?? {}
+            if (slot) {
+              pending.delete(evt.index)
+              yield {
+                type: 'tool_use',
+                id: slot.id,
+                name: slot.name,
+                input: safeParse<Record<string, unknown>>(slot.json || '{}') ?? {}
+              }
             }
+            break
           }
-          break
-        }
 
-        case 'message_start': {
-          const usage = evt.message?.usage
-          if (usage) {
-            yield {
-              type: 'usage',
-              input: usage.input_tokens ?? 0,
-              output: usage.output_tokens ?? 0,
-              cacheRead: usage.cache_read_input_tokens ?? 0,
-              cacheWrite: usage.cache_creation_input_tokens ?? 0
+          case 'message_start': {
+            const usage = evt.message?.usage
+            if (usage) {
+              yield {
+                type: 'usage',
+                input: usage.input_tokens ?? 0,
+                output: usage.output_tokens ?? 0,
+                cacheRead: usage.cache_read_input_tokens ?? 0,
+                cacheWrite: usage.cache_creation_input_tokens ?? 0
+              }
             }
+            break
           }
-          break
-        }
 
-        case 'message_delta': {
-          if (evt.usage?.output_tokens != null) {
-            yield { type: 'usage', input: 0, output: evt.usage.output_tokens }
+          case 'message_delta': {
+            if (evt.usage?.output_tokens != null) {
+              yield { type: 'usage', input: 0, output: evt.usage.output_tokens }
+            }
+            if (evt.delta?.stop_reason) {
+              yield { type: 'stop', reason: evt.delta.stop_reason }
+            }
+            break
           }
-          if (evt.delta?.stop_reason) {
-            yield { type: 'stop', reason: evt.delta.stop_reason }
-          }
-          break
-        }
 
-        case 'error':
-          throw new Error(evt.error?.message ?? 'Anthropic stream error')
+          case 'error':
+            throw new Error(evt.error?.message ?? 'Anthropic stream error')
+        }
       }
+    } finally {
+      cleanup()
     }
   },
 
@@ -184,21 +205,25 @@ function toAnthropicBlock(block: ContentBlock): unknown[] {
           source: { type: 'base64', media_type: block.mediaType, data: block.data }
         }
       ]
-    // Thinking blocks are dropped from history: replaying them requires the
-    // original cryptographic signature, which we do not persist.
     case 'thinking':
-      return []
+      return block.signature
+        ? [{ type: 'thinking', thinking: block.text, signature: block.signature }]
+        : []
+    case 'redacted_thinking':
+      return [{ type: 'redacted_thinking', data: block.data }]
   }
 }
 
 interface AnthropicStreamEvent {
   type: string
   index: number
-  content_block?: { type: string; id: string; name: string }
+  content_block?: { type: string; id: string; name: string; data?: string }
   delta?: {
     type?: string
     text?: string
     thinking?: string
+    signature?: string
+    data?: string
     partial_json?: string
     stop_reason?: string
   }

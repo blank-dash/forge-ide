@@ -13,7 +13,7 @@ import App from './App'
 // stair-stepped text — and these carry Cyrillic, which most coding fonts skip.
 import '@fontsource-variable/inter'
 import '@fontsource-variable/jetbrains-mono'
-import './styles.css'
+import './styles/index.css'
 import '@xterm/xterm/css/xterm.css'
 
 // Monaco is bundled locally rather than pulled from a CDN — the app must work

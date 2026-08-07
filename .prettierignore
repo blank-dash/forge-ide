@@ -1,0 +1,5 @@
+release/
+out/
+node_modules/
+coverage/
+RELEASE_NOTES_*.md

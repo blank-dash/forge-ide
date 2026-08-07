@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ProviderConfig, ProviderTestResult, Settings } from '@shared/types'
 import { useStore } from '../store'
 import BrandMark from './BrandMark'
+import { resetWorkspace } from '../workspace'
 
 type Step = 'welcome' | 'model' | 'folder' | 'done'
 
@@ -177,8 +178,8 @@ export default function SetupWizard() {
             <>
               <h2>Open a project</h2>
               <p>
-                Forge dash works inside one folder at a time. The agent can read and edit anything in
-                it; anywhere else on the machine needs your approval first.
+                Forge dash works inside one folder at a time. The agent can read and edit anything
+                in it; anywhere else on the machine needs your approval first.
               </p>
 
               <div className="field">
@@ -193,7 +194,7 @@ export default function SetupWizard() {
                     const picked = await window.forge.workspace.pick()
                     if (picked) {
                       await finish()
-                      window.location.reload()
+                      await resetWorkspace()
                       return
                     }
                     setStep('done')

@@ -1,3 +1,4 @@
+import { basename } from '@shared/paths'
 import { join } from 'node:path'
 import { app, BrowserWindow, shell } from 'electron'
 import { createServices, type Services } from './ipc'
@@ -133,7 +134,7 @@ function createWindow(): void {
   // them to the terminal so a packaged run can still be diagnosed.
   mainWindow.webContents.on('console-message', (_event, level, message, line, source) => {
     if (level < 2) return
-    const where = source ? ` (${source.split('/').pop()}:${line})` : ''
+    const where = source ? ` (${basename(source)}:${line})` : ''
     console[level >= 3 ? 'error' : 'warn'](`[renderer]${where} ${message}`)
   })
 
@@ -167,7 +168,9 @@ function createWindow(): void {
 async function adoptArgvFolder(argv: string[]): Promise<void> {
   const folder = await folderFromArgv(argv)
   if (!folder || !services) return
-  await services.workspace.open(folder).catch(() => undefined)
+  await services.workspace
+    .open(folder)
+    .catch((error) => console.warn('[workspace] could not open folder', folder, error))
   getWindow()?.webContents.send('workspace:changed', folder)
 }
 
@@ -220,7 +223,10 @@ if (!app.requestSingleInstanceLock()) {
 
     // Must happen before the renderer bootstraps, so it sees the right folder.
     const folder = await folderFromArgv(process.argv)
-    if (folder) await services.workspace.open(folder).catch(() => undefined)
+    if (folder)
+      await services.workspace
+        .open(folder)
+        .catch((error) => console.warn('[workspace] could not open folder', folder, error))
 
     createWindow()
 

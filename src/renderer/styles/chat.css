@@ -1,0 +1,200 @@
+/* Chat                                                                */
+/* ------------------------------------------------------------------ */
+
+.chat {
+  background: var(--bg-1);
+  flex: none;
+  font-size: var(--chat-size);
+}
+
+.chat-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 0 8px;
+}
+
+.msg {
+  padding: 0 14px;
+  margin-bottom: 14px;
+  line-height: 1.62;
+}
+
+.msg-user {
+  display: flex;
+  gap: 8px;
+  color: var(--fg-0);
+}
+.msg-user .caret {
+  color: var(--accent);
+  font-family: var(--mono);
+  flex: none;
+  user-select: none;
+}
+.msg-user .text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+}
+
+.msg-assistant .text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg-0);
+}
+
+.msg-assistant .text code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5px 4px;
+}
+
+.msg-assistant .text pre {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  margin: 8px 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+.thinking {
+  border-left: 2px solid var(--border-strong);
+  padding: 2px 0 2px 10px;
+  margin-bottom: 8px;
+  color: var(--fg-2);
+  font-style: italic;
+  white-space: pre-wrap;
+  font-size: 0.94em;
+}
+
+.thinking-toggle {
+  color: var(--fg-3);
+  font-size: 11px;
+  padding: 2px 0;
+}
+.thinking-toggle:hover {
+  color: var(--fg-1);
+}
+
+/* Tool call blocks вЂ” the Claude Code "вЏє Tool(args)" motif. */
+.tool {
+  margin: 6px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.tool-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  padding: 1px 0;
+  color: var(--fg-0);
+  border-radius: 4px;
+}
+.tool-head:hover {
+  color: var(--accent);
+}
+
+.tool-bullet {
+  flex: none;
+  color: var(--fg-3);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.tool-bullet.running {
+  color: var(--accent);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.tool-bullet.ok {
+  color: var(--green);
+}
+.tool-bullet.err {
+  color: var(--red);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.tool-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-summary {
+  display: flex;
+  gap: 6px;
+  color: var(--fg-2);
+  padding-left: 2px;
+  font-size: 11.5px;
+}
+.tool-summary .elbow {
+  color: var(--fg-3);
+}
+
+.tool-body {
+  margin: 4px 0 2px 14px;
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+  max-height: 340px;
+  overflow: auto;
+  white-space: pre;
+  color: var(--fg-1);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.diff-line {
+  display: block;
+  padding: 0 4px;
+  margin: 0 -4px;
+}
+.diff-add {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.diff-del {
+  background: var(--red-bg);
+  color: var(--red);
+}
+.diff-gap {
+  color: var(--fg-3);
+  text-align: center;
+}
+
+.error-block {
+  margin: 6px 14px 14px;
+  padding: 9px 11px;
+  border: 1px solid var(--red);
+  background: var(--red-bg);
+  border-radius: var(--radius);
+  color: var(--fg-0);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.error-block .detail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-2);
+  margin-top: 6px;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+}

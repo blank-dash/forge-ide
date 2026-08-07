@@ -48,16 +48,18 @@ export async function listSources(): Promise<CaptureSource[]> {
     fetchWindowIcons: false
   })
 
-  return sources
-    // A window with no title is usually an invisible helper, not something
-    // anyone means to share.
-    .filter((source) => source.name.trim().length > 0)
-    .map((source) => ({
-      id: source.id,
-      name: source.name,
-      kind: source.id.startsWith('screen:') ? ('screen' as const) : ('window' as const),
-      thumbnail: source.thumbnail.isEmpty() ? '' : source.thumbnail.toDataURL()
-    }))
+  return (
+    sources
+      // A window with no title is usually an invisible helper, not something
+      // anyone means to share.
+      .filter((source) => source.name.trim().length > 0)
+      .map((source) => ({
+        id: source.id,
+        name: source.name,
+        kind: source.id.startsWith('screen:') ? ('screen' as const) : ('window' as const),
+        thumbnail: source.thumbnail.isEmpty() ? '' : source.thumbnail.toDataURL()
+      }))
+  )
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { BrowserState } from '../../preload'
 import { useT } from '../i18n'
+import { useStore } from '../store'
 
 /**
  * The built-in browser.
@@ -61,13 +62,20 @@ export default function BrowserPane() {
   }, [report])
 
   useEffect(() => {
-    void window.forge.browser.state().then(setState).catch(() => undefined)
+    void window.forge.browser
+      .state()
+      .then(setState)
+      .catch((error) => console.warn('[browser] state unavailable', error))
     return window.forge.browser.onState(setState)
   }, [])
 
   const go = (value: string): void => {
     setEditing(false)
-    void window.forge.browser.navigate(value).catch(() => undefined)
+    void window.forge.browser
+      .navigate(value)
+      .catch((error) =>
+        useStore.getState().pushError(`Navigation failed: ${(error as Error).message}`)
+      )
   }
 
   const shown = editing ? draft : (state?.url ?? '')

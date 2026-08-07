@@ -1,4 +1,4 @@
-﻿import { execFile } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import type { GitCommit, GitFile, GitFileState, GitStatus } from '@shared/types'
 
 const MAX_BUFFER = 12 * 1024 * 1024
@@ -102,10 +102,9 @@ export class Git {
     // the case here, so the non-zero exit is expected rather than an error.
     const status = await this.run(['status', '--porcelain=v1', '--', file]).catch(() => '')
     if (status.startsWith('??')) {
-      return this.run(
-        ['diff', '--no-color', '--no-index', '--', '/dev/null', file],
-        { tolerateFailure: true }
-      )
+      return this.run(['diff', '--no-color', '--no-index', '--', '/dev/null', file], {
+        tolerateFailure: true
+      })
     }
 
     return output
@@ -124,8 +123,12 @@ export class Git {
   async discard(paths: string[]): Promise<void> {
     if (paths.length === 0) return
     // Tracked files are restored; untracked ones have to be removed explicitly.
-    await this.run(['restore', '--worktree', '--', ...paths]).catch(() => undefined)
-    await this.run(['clean', '-fd', '--', ...paths]).catch(() => undefined)
+    await this.run(['restore', '--worktree', '--', ...paths]).catch((error) =>
+      console.warn('[git] restore failed', paths, error)
+    )
+    await this.run(['clean', '-fd', '--', ...paths]).catch((error) =>
+      console.warn('[git] clean failed', paths, error)
+    )
   }
 
   async commit(message: string, stageAll: boolean): Promise<string> {
@@ -157,7 +160,10 @@ export class Git {
 
   async branches(): Promise<string[]> {
     const output = await this.run(['branch', '--format=%(refname:short)']).catch(() => '')
-    return output.split('\n').map((line) => line.trim()).filter(Boolean)
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
   }
 
   async checkout(branch: string): Promise<void> {
@@ -175,14 +181,17 @@ export class Git {
     }
 
     const dirty = status.files.slice(0, 25).map((file) => `  ${file.state.padEnd(9)} ${file.path}`)
-    const extra = status.files.length > dirty.length ? `\n  … ${status.files.length - dirty.length} more` : ''
+    const extra =
+      status.files.length > dirty.length ? `\n  … ${status.files.length - dirty.length} more` : ''
 
     const commits = await this.log(5)
     const recent = commits.map((commit) => `  ${commit.shortHash} ${commit.subject}`).join('\n')
 
     return [
       parts.join(', '),
-      status.files.length > 0 ? `Uncommitted changes:\n${dirty.join('\n')}${extra}` : 'Working tree clean',
+      status.files.length > 0
+        ? `Uncommitted changes:\n${dirty.join('\n')}${extra}`
+        : 'Working tree clean',
       commits.length > 0 ? `Recent commits:\n${recent}` : ''
     ]
       .filter(Boolean)

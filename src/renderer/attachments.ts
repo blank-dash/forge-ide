@@ -19,6 +19,8 @@ export type Attachment =
       /** Object URL for the thumbnail; revoked when the attachment is dropped. */
       preview: string
       bytes: number
+      width?: number
+      height?: number
     }
   | { kind: 'file'; id: string; name: string; path: string; bytes: number }
   | { kind: 'text'; id: string; name: string; text: string; lines: number }
@@ -49,7 +51,10 @@ export function isImage(file: File): boolean {
  * that cost a fortune in tokens and get downscaled server-side anyway.
  */
 export async function toImageAttachment(file: File): Promise<Attachment> {
-  const bitmap = await createImageBitmap(file).catch(() => null)
+  const bitmap = await createImageBitmap(file).catch((error) => {
+    console.warn('[attachments] image decode failed', file.name, error)
+    return null
+  })
 
   if (!bitmap) {
     // Not decodable as an image after all — fall back to the raw bytes.
@@ -76,9 +81,7 @@ export async function toImageAttachment(file: File): Promise<Attachment> {
   bitmap.close()
 
   // PNG keeps screenshots and diagrams crisp; JPEG would blur text.
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/png')
-  )
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   const source = blob && blob.size < file.size ? blob : file
 
   return {
@@ -88,7 +91,9 @@ export async function toImageAttachment(file: File): Promise<Attachment> {
     mediaType: source === file ? file.type || mediaTypeFor(file.name) : 'image/png',
     data: await toBase64(source),
     preview: URL.createObjectURL(source),
-    bytes: source.size
+    bytes: source.size,
+    width,
+    height
   }
 }
 
@@ -141,7 +146,10 @@ export function releaseAttachment(attachment: Attachment): void {
 export function composeMessage(
   text: string,
   attachments: Attachment[]
-): { text: string; images: Array<{ mediaType: string; data: string }> } {
+): {
+  text: string
+  images: Array<{ mediaType: string; data: string; width?: number; height?: number }>
+} {
   const files = attachments.filter((entry) => entry.kind === 'file')
   const texts = attachments.filter((entry) => entry.kind === 'text')
   const images = attachments.filter((entry) => entry.kind === 'image')
@@ -168,8 +176,13 @@ export function composeMessage(
   return {
     text: parts.join('\n\n'),
     images: images.map((entry) => {
-      const image = entry as { mediaType: string; data: string }
-      return { mediaType: image.mediaType, data: image.data }
+      const image = entry as { mediaType: string; data: string; width?: number; height?: number }
+      return {
+        mediaType: image.mediaType,
+        data: image.data,
+        ...(image.width ? { width: image.width } : {}),
+        ...(image.height ? { height: image.height } : {})
+      }
     })
   }
 }

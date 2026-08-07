@@ -1,0 +1,129 @@
+/* ------------------------------------------------------------------ */
+/* Shell layout                                                        */
+/* ------------------------------------------------------------------ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/*
+ * The window controls are drawn by the OS on top of this bar, not inside it, so
+ * the right end has to be kept clear of them by hand вЂ” otherwise the last pill
+ * (usually "N to review") sits underneath the close button.
+ *
+ * `titlebar-area-*` is what the Window Controls Overlay reports. The fallbacks
+ * collapse the reservation to the normal padding on platforms that do not have
+ * an overlay, which is every platform but Windows here.
+ */
+.titlebar {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 12px);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.titlebar > * {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-spacer {
+  flex: 1;
+  -webkit-app-region: drag;
+  align-self: stretch;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-left: 4px;
+}
+
+.workspace-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: var(--radius);
+  color: var(--fg-1);
+  max-width: 320px;
+  transition: background 120ms var(--ease);
+}
+.workspace-btn:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.workspace-btn .path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-header {
+  height: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.resizer {
+  flex: none;
+  width: 1px;
+  background: var(--border);
+  position: relative;
+  cursor: col-resize;
+}
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+}
+.resizer:hover,
+.resizer.active {
+  background: var(--accent);
+}
+
+.resizer-h {
+  height: 1px;
+  width: auto;
+  cursor: row-resize;
+}
+.resizer-h::after {
+  inset: -3px 0;
+}
+
+/* ------------------------------------------------------------------ */

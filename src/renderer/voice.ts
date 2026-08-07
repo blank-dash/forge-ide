@@ -170,13 +170,19 @@ export async function microphones(): Promise<MediaDeviceInfo[]> {
     // Refused: the list will have ids but no names, which is still usable.
   }
 
-  const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+  const devices = await navigator.mediaDevices.enumerateDevices().catch((error) => {
+    console.warn('[voice] device enumeration failed', error)
+    return []
+  })
   return devices.filter((device) => device.kind === 'audioinput')
 }
 
 /** Voices installed on this machine. */
 export function systemVoices(): Promise<Array<{ name: string; lang: string }>> {
-  return window.forge.voice.voices().catch(() => [])
+  return window.forge.voice.voices().catch((error) => {
+    console.warn('[voice] system voice listing failed', error)
+    return []
+  })
 }
 
 /* ------------------------------------------------------------------ */

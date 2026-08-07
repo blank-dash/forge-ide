@@ -60,7 +60,8 @@ export function fuzzyMatch(query: string, candidate: string): FuzzyMatch {
   const candidates: FuzzyMatch[] = [whole]
 
   const base = matchFrom(needle, candidate, cut)
-  if (base.score > 0) candidates.push({ score: base.score + BONUS_BASENAME, positions: base.positions })
+  if (base.score > 0)
+    candidates.push({ score: base.score + BONUS_BASENAME, positions: base.positions })
 
   /*
    * A pass that will only land on word starts.
@@ -135,7 +136,8 @@ function matchFrom(
     if (candidate[found] === needle[index]) score += BONUS_EXACT_CASE
 
     if (found === previous + 1) score += BONUS_CONSECUTIVE
-    else if (previous !== -1) score -= Math.min(PENALTY_GAP * (found - previous - 1), MAX_GAP_PENALTY)
+    else if (previous !== -1)
+      score -= Math.min(PENALTY_GAP * (found - previous - 1), MAX_GAP_PENALTY)
 
     positions.push(found)
     previous = found
@@ -155,7 +157,11 @@ function matchFrom(
 
 /** The next place this letter begins a word, or -1. */
 function nextBoundary(candidate: string, lowerHay: string, letter: string, from: number): number {
-  for (let index = lowerHay.indexOf(letter, from); index !== -1; index = lowerHay.indexOf(letter, index + 1)) {
+  for (
+    let index = lowerHay.indexOf(letter, from);
+    index !== -1;
+    index = lowerHay.indexOf(letter, index + 1)
+  ) {
     if (bonusAt(candidate, index) > 0) return index
   }
   return -1

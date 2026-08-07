@@ -1,0 +1,36 @@
+/* Sessions panel                                                      */
+/* ------------------------------------------------------------------ */
+
+.session-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+}
+.session-row:hover {
+  background: var(--bg-2);
+}
+
+.session-open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 10px;
+  text-align: left;
+  min-width: 0;
+}
+.session-title {
+  font-size: 12.5px;
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-meta {
+  font-size: 10.5px;
+  color: var(--fg-3);
+  font-family: var(--mono);
+}
+
+/* ------------------------------------------------------------------ */

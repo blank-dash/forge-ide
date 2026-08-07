@@ -1,0 +1,95 @@
+/* Composer */
+
+.composer {
+  flex: none;
+  border-top: 1px solid var(--border);
+  padding: 8px 10px 6px;
+  background: var(--bg-1);
+  position: relative;
+}
+
+.composer-box {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  transition: border-color 120ms var(--ease);
+}
+.composer-box:focus-within {
+  border-color: var(--accent);
+}
+
+.composer-box .caret {
+  color: var(--accent);
+  font-family: var(--mono);
+  line-height: 1.6;
+  user-select: none;
+}
+
+.composer textarea {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  resize: none;
+  line-height: 1.6;
+  max-height: 220px;
+  font-family: var(--sans);
+  font-size: var(--chat-size);
+}
+.composer textarea::placeholder {
+  color: var(--fg-3);
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px 0;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  font-size: 11px;
+  white-space: nowrap;
+  transition: all 120ms var(--ease);
+}
+.pill:hover {
+  border-color: var(--fg-3);
+  color: var(--fg-0);
+}
+.pill.accent {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.pill.warn {
+  color: var(--yellow);
+  border-color: color-mix(in oklab, var(--yellow) 45%, transparent);
+}
+.pill.danger {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 45%, transparent);
+}
+
+.stop-btn {
+  margin-left: auto;
+  color: var(--red);
+  border: 1px solid color-mix(in oklab, var(--red) 40%, transparent);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 11px;
+}
+.stop-btn:hover {
+  background: var(--red-bg);
+}

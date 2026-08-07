@@ -55,7 +55,10 @@ export default function Dashboard() {
 
   const open = async (id: string): Promise<void> => {
     patchUi({ chatPane: 'chats' })
-    const live = await window.forge.agent.state(id).catch(() => null)
+    const live = await window.forge.agent.state(id).catch((error) => {
+      console.warn('[dashboard] live session unavailable', id, error)
+      return null
+    })
     const store = useStore.getState()
 
     if (live) {
@@ -67,11 +70,14 @@ export default function Dashboard() {
         running: live.running,
         changes: live.changes
       })
-        store.setSessionModel(live.model ?? null)
+      store.setSessionModel(live.model ?? null)
       return
     }
 
-    const record = await window.forge.sessions.load(id).catch(() => null)
+    const record = await window.forge.sessions.load(id).catch((error) => {
+      useStore.getState().pushError(`Could not load session: ${(error as Error).message}`)
+      return null
+    })
     if (record) {
       store.switchSession(record.id, {
         ...emptyView(),
@@ -260,11 +266,7 @@ function nextTaskHint(
  * No axis and no legend: the question this answers is "is today unlike the
  * other days", which a shape answers faster than numbers would.
  */
-function SpendChart({
-  days
-}: {
-  days: Array<{ date: string; costUsd: number; turns: number }>
-}) {
+function SpendChart({ days }: { days: Array<{ date: string; costUsd: number; turns: number }> }) {
   const recent = days.slice(0, 14).reverse()
   const peak = Math.max(...recent.map((day) => day.costUsd), 0.0001)
   const total = recent.reduce((sum, day) => sum + day.costUsd, 0)
@@ -273,7 +275,11 @@ function SpendChart({
     <div className="spend">
       <div className="spend-bars">
         {recent.map((day) => (
-          <div className="spend-col" key={day.date} title={`${day.date} · $${day.costUsd.toFixed(4)} · ${day.turns} turns`}>
+          <div
+            className="spend-col"
+            key={day.date}
+            title={`${day.date} · $${day.costUsd.toFixed(4)} · ${day.turns} turns`}
+          >
             <div
               className="spend-bar"
               style={{ height: `${Math.max(2, (day.costUsd / peak) * 100)}%` }}
@@ -282,7 +288,9 @@ function SpendChart({
           </div>
         ))}
       </div>
-      <div className="spend-total">${total.toFixed(2)} over {recent.length} days</div>
+      <div className="spend-total">
+        ${total.toFixed(2)} over {recent.length} days
+      </div>
     </div>
   )
 }

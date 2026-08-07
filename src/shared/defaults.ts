@@ -1,4 +1,5 @@
 import type { ModelConfig, ProviderConfig, Settings } from './types'
+import { BRAND_ACCENT } from './brand'
 
 const m = (
   id: string,
@@ -35,9 +36,51 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     builtin: true,
     enabled: true,
     models: [
-      m('claude-opus-4-5', 'Claude Opus 4.5', 200_000, 64_000, { input: 5, output: 25 }, { supportsThinking: true }),
-      m('claude-sonnet-4-5', 'Claude Sonnet 4.5', 200_000, 64_000, { input: 3, output: 15 }, { supportsThinking: true }),
-      m('claude-haiku-4-5', 'Claude Haiku 4.5', 200_000, 32_000, { input: 1, output: 5 })
+      m(
+        'claude-fable-5',
+        'Claude Fable 5',
+        1_000_000,
+        128_000,
+        { input: 10, output: 50 },
+        { supportsThinking: true }
+      ),
+      m(
+        'claude-opus-5',
+        'Claude Opus 5',
+        1_000_000,
+        128_000,
+        { input: 5, output: 25 },
+        { supportsThinking: true }
+      ),
+      m(
+        'claude-sonnet-5',
+        'Claude Sonnet 5',
+        1_000_000,
+        128_000,
+        { input: 3, output: 15 },
+        { supportsThinking: true }
+      ),
+      m('claude-haiku-4-5-20251001', 'Claude Haiku 4.5', 200_000, 64_000, { input: 1, output: 5 }),
+      m(
+        'claude-opus-4-5',
+        'Claude Opus 4.5 (legacy)',
+        200_000,
+        64_000,
+        { input: 5, output: 25 },
+        { supportsThinking: true }
+      ),
+      m(
+        'claude-sonnet-4-5',
+        'Claude Sonnet 4.5 (legacy)',
+        200_000,
+        64_000,
+        { input: 3, output: 15 },
+        { supportsThinking: true }
+      ),
+      m('claude-haiku-4-5', 'Claude Haiku 4.5 alias (legacy)', 200_000, 32_000, {
+        input: 1,
+        output: 5
+      })
     ]
   },
   {
@@ -52,7 +95,14 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     models: [
       m('gpt-4.1', 'GPT-4.1', 1_000_000, 32_000, { input: 2, output: 8 }),
       m('gpt-4.1-mini', 'GPT-4.1 mini', 1_000_000, 32_000, { input: 0.4, output: 1.6 }),
-      m('o4-mini', 'o4-mini', 200_000, 100_000, { input: 1.1, output: 4.4 }, { supportsThinking: true }),
+      m(
+        'o4-mini',
+        'o4-mini',
+        200_000,
+        100_000,
+        { input: 1.1, output: 4.4 },
+        { supportsThinking: true }
+      ),
       m('whisper-1', 'Whisper speech-to-text', 0, 0, undefined, { supportsVision: false })
     ]
   },
@@ -67,9 +117,12 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     enabled: true,
     models: [
       m('deepseek-chat', 'DeepSeek Chat', 128_000, 8_000),
-      m('deepseek-reasoner', 'DeepSeek Reasoner', 128_000, 8_000, undefined, { supportsThinking: true })
+      m('deepseek-reasoner', 'DeepSeek Reasoner', 128_000, 8_000, undefined, {
+        supportsThinking: true
+      })
     ]
-  },  {
+  },
+  {
     id: 'google',
     name: 'Google Gemini',
     kind: 'google',
@@ -79,7 +132,14 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     builtin: true,
     enabled: true,
     models: [
-      m('gemini-2.5-pro', 'Gemini 2.5 Pro', 1_000_000, 65_000, { input: 1.25, output: 10 }, { supportsThinking: true }),
+      m(
+        'gemini-2.5-pro',
+        'Gemini 2.5 Pro',
+        1_000_000,
+        65_000,
+        { input: 1.25, output: 10 },
+        { supportsThinking: true }
+      ),
       m('gemini-2.5-flash', 'Gemini 2.5 Flash', 1_000_000, 65_000, { input: 0.3, output: 2.5 })
     ]
   },
@@ -108,7 +168,9 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     builtin: true,
     enabled: false,
     models: [
-      m('qwen2.5-coder:14b', 'Qwen2.5 Coder 14B', 32_000, 8_000, undefined, { supportsVision: false }),
+      m('qwen2.5-coder:14b', 'Qwen2.5 Coder 14B', 32_000, 8_000, undefined, {
+        supportsVision: false
+      }),
       m('llama3.1:8b', 'Llama 3.1 8B', 128_000, 8_000, undefined, { supportsVision: false })
     ]
   },
@@ -126,10 +188,12 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
+  schemaVersion: 1,
   providers: BUILTIN_PROVIDERS,
-  activeModel: 'anthropic:claude-sonnet-4-5',
+  activeModel: 'anthropic:claude-sonnet-5',
   mode: 'agent',
   readOnly: false,
+  dryRun: false,
   bypassPermissions: false,
   editApproval: 'review',
   commandApproval: 'ask',
@@ -184,15 +248,22 @@ export const DEFAULT_SETTINGS: Settings = {
     outputModel: ''
   },
   theme: 'warm-dark',
-  accent: '#d97757',
+  accent: BRAND_ACCENT,
   uiScale: 1,
   editorFontSize: 13,
   chatFontSize: 13,
   // Ships with the app, so this never falls through to whatever the system has.
   fontFamily: "'JetBrains Mono Variable', 'Cascadia Code', 'SF Mono', Consolas, monospace",
   maxOutputTokens: 16_000,
+  maxAgentTurns: 80,
+  maxAttempts: 3,
+  turnTimeoutMs: 600_000,
   temperature: 0,
   effort: 'off',
+  providerFirstByteTimeoutMs: 60_000,
+  providerChunkTimeoutMs: 120_000,
+  maxTurnCostUsd: 0,
+  maxSessionCostUsd: 0,
   customInstructions: '',
   showThinking: true,
   autoSaveSessions: true,

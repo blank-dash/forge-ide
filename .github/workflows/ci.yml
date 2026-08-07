@@ -6,27 +6,47 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    name: Typecheck, tests and build
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Smoke tests
-        run: npm run smoke
-
-      # Catches bundling problems the typechecker cannot see.
-      - name: Build
-        run: npm run build
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run smoke
+      - run: npm run build
+      - name: Windows input check
+        if: matrix.os == 'windows-latest'
+        run: npm run check:input
+      - name: Dependency audit
+        if: matrix.os == 'ubuntu-latest'
+        run: npm audit --audit-level=high
+      - name: License summary
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run licenses
+      - name: Coverage
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run coverage
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/

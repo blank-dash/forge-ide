@@ -80,8 +80,12 @@ export class UsageLog {
     if (!this.dirty) return
     this.dirty = false
 
-    const all = [...this.days.values()].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, KEEP_DAYS)
-    await fs.writeFile(this.file, JSON.stringify(all), 'utf8').catch(() => undefined)
+    const all = [...this.days.values()]
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, KEEP_DAYS)
+    await fs
+      .writeFile(this.file, JSON.stringify(all), 'utf8')
+      .catch((error) => console.warn('[usage] write failed', this.file, error))
   }
 
   private schedule(): void {
@@ -97,7 +101,11 @@ export class UsageLog {
     if (this.loaded) return
     this.loaded = true
 
-    const raw = await fs.readFile(this.file, 'utf8').catch(() => null)
+    const raw = await fs.readFile(this.file, 'utf8').catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('[usage] read failed', this.file, error)
+      return null
+    })
     if (!raw) return
 
     try {

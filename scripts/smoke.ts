@@ -7,8 +7,11 @@ import assert from 'node:assert/strict'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { effortToBudget } from '../src/shared/types'
-import type { Message, ModelConfig, PermissionRequest } from '../src/shared/types'
+import { effortToBudget, detectsThinking, detectsVision } from '../src/shared/types'
+import { basename, dirname, ext, isInside, toPosix } from '../src/shared/paths'
+import { migrateSettings, nextProviderId, validateProviderIds } from '../src/shared/settings'
+import { DEFAULT_SETTINGS } from '../src/shared/defaults'
+import type { Message, ModelConfig, PermissionRequest, Settings } from '../src/shared/types'
 import { ChangeTracker } from '../src/main/agent/changes'
 import { estimateTokens, trimForContext } from '../src/main/agent/context'
 import { countChanges, renderDiff } from '../src/main/agent/diff'
@@ -47,6 +50,72 @@ function test(name: string, fn: () => void | Promise<void>): void {
     bad(error)
   }
 }
+
+/* ------------------------------------------------------------------ */
+
+console.log('paths')
+
+test('basename handles Windows paths', () => {
+  assert.equal(basename('D:\\forge-ide\\src\\App.tsx'), 'App.tsx')
+  assert.equal(basename('\\\\server\\share\\file.txt'), 'file.txt')
+})
+
+test('path helpers handle mixed separators and roots', () => {
+  assert.equal(dirname('C:\\src\\main\\index.ts'), 'C:/src/main')
+  assert.equal(ext('/tmp/.env'), '')
+  assert.equal(ext('/tmp/file.ts'), '.ts')
+  assert.equal(toPosix('src\\main/index.ts'), 'src/main/index.ts')
+  assert.equal(isInside('C:\\workspace', 'c:/workspace/src/app.ts'), true)
+  assert.equal(isInside('/workspace', '/workspace-other/file'), false)
+})
+
+console.log('model detection')
+
+test('recognises current reasoning and vision models', () => {
+  assert.equal(detectsThinking('claude-opus-5'), true)
+  assert.equal(detectsThinking('claude-sonnet-5'), true)
+  assert.equal(detectsThinking('claude-fable-5'), true)
+  assert.equal(detectsThinking('whisper-1'), false)
+  assert.equal(detectsThinking('local-model'), false)
+  assert.equal(detectsVision('claude-opus-5'), true)
+})
+
+/* ------------------------------------------------------------------ */
+
+console.log('settings')
+
+test('migrates an old profile without dropping unknown fields', () => {
+  const migrated = migrateSettings({
+    permissionMode: 'plan',
+    thinkingBudget: 9_000,
+    futureField: { keep: true }
+  }) as Settings & { futureField?: { keep: boolean } }
+  assert.equal(migrated.schemaVersion, 1)
+  assert.equal(migrated.mode, 'chat')
+  assert.equal(migrated.readOnly, true)
+  assert.equal(migrated.effort, 'medium')
+  assert.deepEqual(migrated.futureField, { keep: true })
+})
+
+test('rejects duplicate provider and model ids', () => {
+  assert.throws(
+    () => validateProviderIds([DEFAULT_SETTINGS.providers[0], DEFAULT_SETTINGS.providers[0]]),
+    /used more than once/
+  )
+  const provider = {
+    ...DEFAULT_SETTINGS.providers[0],
+    models: [DEFAULT_SETTINGS.providers[0].models[0], DEFAULT_SETTINGS.providers[0].models[0]]
+  }
+  assert.throws(() => validateProviderIds([provider]), /duplicated/)
+})
+
+test('provider ids get the first free numeric suffix', () => {
+  const providers = [
+    { ...DEFAULT_SETTINGS.providers[0], id: 'custom' },
+    { ...DEFAULT_SETTINGS.providers[0], id: 'custom-2' }
+  ]
+  assert.equal(nextProviderId('custom', providers), 'custom-3')
+})
 
 /* ------------------------------------------------------------------ */
 
@@ -516,6 +585,21 @@ test('dropping stops on a clean user turn so tool pairing survives', () => {
   }
 })
 
+test('image estimates scale with dimensions and encoded size', () => {
+  const imageMessage = (width?: number, height?: number, length = 100): Message => ({
+    id: 'image',
+    role: 'user',
+    createdAt: 0,
+    content: [{ type: 'image', mediaType: 'image/png', data: 'a'.repeat(length), width, height }]
+  })
+  const icon = estimateTokens('', [imageMessage(64, 64)])
+  const screenshot = estimateTokens('', [imageMessage(1568, 900)])
+  const unknownSmall = estimateTokens('', [imageMessage(undefined, undefined, 100)])
+  const unknownLarge = estimateTokens('', [imageMessage(undefined, undefined, 100_000)])
+  assert.ok(screenshot > icon, 'a large screenshot should cost more than an icon')
+  assert.ok(unknownLarge > unknownSmall, 'base64 fallback should scale with data length')
+})
+
 test('token estimate grows with content', () => {
   const small = estimateTokens('sys', [userMessage('hi')])
   const large = estimateTokens('sys', [userMessage('hi'.repeat(1000))])
@@ -573,7 +657,14 @@ test('reject restores the file and rejectAll clears the list', async () => {
   await tracker.rejectAll()
 
   assert.equal(await fs.readFile(existing, 'utf8'), 'original')
-  assert.equal(await fs.stat(created).then(() => true, () => false), false, 'created file removed')
+  assert.equal(
+    await fs.stat(created).then(
+      () => true,
+      () => false
+    ),
+    false,
+    'created file removed'
+  )
   assert.equal(tracker.count, 0)
 
   await fs.rm(dir, { recursive: true, force: true })
@@ -615,7 +706,12 @@ const streamOf = (chunks: string[]): ReadableStream<Uint8Array> =>
 test('parses framed events and ignores keep-alives', async () => {
   const seen: Array<{ event: string; data: string }> = []
   for await (const frame of readSse(
-    streamOf([': ping\n\n', 'event: message_start\ndata: {"a":1}\n\n', 'data: {"b":', '2}\n\ndata: [DONE]\n\n'])
+    streamOf([
+      ': ping\n\n',
+      'event: message_start\ndata: {"a":1}\n\n',
+      'data: {"b":',
+      '2}\n\ndata: [DONE]\n\n'
+    ])
   )) {
     seen.push(frame)
   }

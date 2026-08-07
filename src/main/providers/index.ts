@@ -1,4 +1,5 @@
 import { detectsThinking, detectsVision } from '@shared/types'
+import { calculateCost } from '@shared/pricing'
 import type {
   ModelConfig,
   ModelRef,
@@ -24,6 +25,38 @@ export function getAdapter(kind: ProviderConfig['kind']): ProviderAdapter {
   return adapter
 }
 
+const MODEL_CACHE_TTL_MS = 6 * 60 * 60_000
+const modelCache = new Map<string, { expiresAt: number; models: string[] }>()
+
+export async function listModelsCached(
+  provider: ProviderConfig,
+  signal: AbortSignal,
+  refresh = false
+): Promise<string[]> {
+  const key = `${provider.kind}:${provider.baseUrl}:${provider.apiKey}`
+  const cached = modelCache.get(key)
+  if (!refresh && cached && cached.expiresAt > Date.now()) return cached.models
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const models = await getAdapter(provider.kind).listModels(provider, signal)
+      modelCache.set(key, { models, expiresAt: Date.now() + MODEL_CACHE_TTL_MS })
+      return models
+    } catch (error) {
+      lastError = error
+      if (signal.aborted) throw error
+      await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt))
+    }
+  }
+  if (cached) return cached.models
+  throw lastError
+}
+
+export function clearModelCache(): void {
+  modelCache.clear()
+}
+
 export interface ResolvedModel {
   provider: ProviderConfig
   model: ModelConfig
@@ -43,13 +76,13 @@ export function resolveModel(settings: Settings, ref: ModelRef): ResolvedModel {
   const modelId = ref.slice(sep + 1)
 
   const provider = settings.providers.find((entry) => entry.id === providerId)
-  if (!provider) throw new Error(`Unknown provider "${providerId}". Add it in Settings → Providers.`)
+  if (!provider)
+    throw new Error(`Unknown provider "${providerId}". Add it in Settings → Providers.`)
   if (!provider.apiKey) {
     throw new Error(`No API key set for ${provider.name}. Add one in Settings → Providers.`)
   }
 
-  const model =
-    provider.models.find((entry) => entry.id === modelId) ?? syntheticModel(modelId)
+  const model = provider.models.find((entry) => entry.id === modelId) ?? syntheticModel(modelId)
 
   return { provider, model, adapter: getAdapter(provider.kind), ref }
 }
@@ -69,15 +102,7 @@ function syntheticModel(id: string): ModelConfig {
 }
 
 export function computeCost(model: ModelConfig, usage: Omit<TokenUsage, 'costUsd'>): number {
-  const pricing = model.pricing
-  if (!pricing) return 0
-  const million = 1_000_000
-  return (
-    (usage.input * pricing.input) / million +
-    (usage.output * pricing.output) / million +
-    (usage.cacheRead * (pricing.cacheRead ?? pricing.input * 0.1)) / million +
-    (usage.cacheWrite * (pricing.cacheWrite ?? pricing.input * 1.25)) / million
-  )
+  return calculateCost(model, usage)
 }
 
 /** Round-trips a tiny request so the user gets a real answer, not a guess. */

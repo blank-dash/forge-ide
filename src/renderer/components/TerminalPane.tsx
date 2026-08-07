@@ -1,3 +1,4 @@
+import { BRAND_ACCENT } from '@shared/brand'
 import { useEffect, useRef, useState } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
@@ -162,7 +163,9 @@ function TerminalInstance({ visible }: InstanceProps) {
     return () => clearTimeout(timer)
   }, [visible])
 
-  return <div className="terminal-host" ref={host} style={{ display: visible ? 'block' : 'none' }} />
+  return (
+    <div className="terminal-host" ref={host} style={{ display: visible ? 'block' : 'none' }} />
+  )
 }
 
 function safeFit(fit: FitAddon | null): void {
@@ -211,7 +214,7 @@ function attachLocalEcho(term: Terminal, sessionId: () => string | null): void {
 const DARK_THEME = {
   background: '#100f0e',
   foreground: '#ededeb',
-  cursor: '#d97757',
+  cursor: BRAND_ACCENT,
   cursorAccent: '#100f0e',
   selectionBackground: '#2c2c28',
   black: '#232320',
@@ -235,7 +238,7 @@ const DARK_THEME = {
 const LIGHT_THEME = {
   background: '#ffffff',
   foreground: '#1f1e1c',
-  cursor: '#d97757',
+  cursor: BRAND_ACCENT,
   cursorAccent: '#ffffff',
   selectionBackground: '#e4e2db',
   brightBlack: '#9b968c'
