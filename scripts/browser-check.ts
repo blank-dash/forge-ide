@@ -117,9 +117,7 @@ app.whenReady().then(async () => {
   await browser.navigate('file:///etc/passwd').then(
     () => check('a non-web scheme is refused', () => assert.fail('file:// was accepted')),
     (error) =>
-      check('a non-web scheme is refused', () =>
-        assert.match(error.message, /http and https/i)
-      )
+      check('a non-web scheme is refused', () => assert.match(error.message, /http and https/i))
   )
 
   /* ---------------- background reading ---------------- */

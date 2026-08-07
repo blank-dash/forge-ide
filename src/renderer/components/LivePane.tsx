@@ -21,7 +21,6 @@ export default function LivePane() {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState('')
   const [actions, setActions] = useState<LiveAction[]>([])
-  const [autoStartRequested, setAutoStartRequested] = useState(false)
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const recorder = useRef(new Recorder())
@@ -33,16 +32,6 @@ export default function LivePane() {
   const patchUi = useStore((state) => state.patchUi)
   const spokenReply = useRef<string | null>(null)
   const autoStarted = useRef(false)
-  const autoShareStarted = useRef(false)
-
-  useEffect(() => {
-    const onStart = (event: Event): void => {
-      const owner = (event as CustomEvent<string>).detail
-      if (owner === sessionId) setAutoStartRequested(true)
-    }
-    window.addEventListener('forge:live-start', onStart)
-    return () => window.removeEventListener('forge:live-start', onStart)
-  }, [sessionId])
 
   const refreshSources = useCallback(async () => {
     try {
@@ -59,29 +48,17 @@ export default function LivePane() {
   }, [status?.active, refreshSources])
 
   useEffect(() => {
-    const onStart = (event: Event): void => {
-      const owner = (event as CustomEvent<string>).detail
-      if (owner === sessionId) setAutoStartRequested(true)
-    }
-    window.addEventListener('forge:live-start', onStart)
-    return () => window.removeEventListener('forge:live-start', onStart)
-  }, [sessionId])
-
-  useEffect(() => {
-    if (!autoStartRequested || autoShareStarted.current || status?.active || !picked) return
-    autoShareStarted.current = true
-    setAutoStartRequested(false)
-    void start()
-  }, [autoStartRequested, picked, status?.active])
-
-  useEffect(() => {
-    if (!status?.active || status.sessionId !== sessionId || running || voice.speak === 'off') return
+    if (!status?.active || status.sessionId !== sessionId || running || voice.speak === 'off')
+      return
     const reply = [...entries]
       .reverse()
       .find((entry) => entry.role === 'assistant' && !entry.streaming && entry.usage)
     if (!reply) return
 
-    const text = reply.blocks.map((block) => (block.kind === 'text' ? block.text : '')).join(' ').trim()
+    const text = reply.blocks
+      .map((block) => (block.kind === 'text' ? block.text : ''))
+      .join(' ')
+      .trim()
     if (!text || spokenReply.current === reply.id) return
     spokenReply.current = reply.id
     void speak(text).catch((caught: Error) => pushError(caught.message))
@@ -120,7 +97,7 @@ export default function LivePane() {
     }
   }, [status?.active])
 
-  async function start(): Promise<void> {
+  const start = useCallback(async (): Promise<void> => {
     setBusy(true)
     setError(null)
     try {
@@ -131,17 +108,11 @@ export default function LivePane() {
     } finally {
       setBusy(false)
     }
-  }
+  }, [access, picked, sessionId])
 
   useEffect(() => {
-    if (!autoStartRequested || autoShareStarted.current || status?.active || !picked) return
-    autoShareStarted.current = true
-    setAutoStartRequested(false)
-    void start()
-  }, [autoStartRequested, picked, status?.active])
-
-  useEffect(() => {
-    return () => recorder.current.cancel()
+    const activeRecorder = recorder.current
+    return () => activeRecorder.cancel()
   }, [])
 
   const talk = useCallback(async (): Promise<void> => {
@@ -164,9 +135,11 @@ export default function LivePane() {
   useEffect(() => {
     if (!status?.active || status.sessionId !== sessionId || autoStarted.current) return
     autoStarted.current = true
-    void speak('Live mode is enabled. What shall we do?', { ...voice, speak: 'system' }).catch(() => undefined)
+    void speak('Live mode is enabled. What shall we do?', { ...voice, speak: 'system' }).catch(
+      () => undefined
+    )
     void talk()
-  }, [status?.active, status?.sessionId, sessionId, talk])
+  }, [status?.active, status?.sessionId, sessionId, talk, voice])
 
   const finishTalking = useCallback(async (): Promise<void> => {
     if (!recorder.current.active) return
@@ -175,7 +148,11 @@ export default function LivePane() {
     try {
       const audio = await recorder.current.stop()
       if (!audio) return
-      const result = await window.forge.voice.transcribe(audio.data, audio.mediaType, voice.inputLanguage)
+      const result = await window.forge.voice.transcribe(
+        audio.data,
+        audio.mediaType,
+        voice.inputLanguage
+      )
       const text = result.text.trim()
       if (!text) return
 
@@ -362,13 +339,13 @@ export default function LivePane() {
         </div>
       </div>
 
-        {access === 'control' && (
-          <div className="live-warning">
-            {t(
-              'Control drives the real mouse and keyboard. It can click anything that is on screen, including things this app knows nothing about. Nothing starts on its own and closing the app ends it — but while it runs, watch it.'
-            )}
-          </div>
-        )}
+      {access === 'control' && (
+        <div className="live-warning">
+          {t(
+            'Control drives the real mouse and keyboard. It can click anything that is on screen, including things this app knows nothing about. Nothing starts on its own and closing the app ends it — but while it runs, watch it.'
+          )}
+        </div>
+      )}
 
       <div className="tasks-footer">
         <span style={{ flex: 1 }} />

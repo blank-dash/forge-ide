@@ -10,14 +10,17 @@ export interface SseMessage {
   data: string
 }
 
-export async function* readSse(body: ReadableStream<Uint8Array>): AsyncGenerator<SseMessage> {
+export async function* readSse(
+  body: ReadableStream<Uint8Array>,
+  chunkTimeoutMs = 0
+): AsyncGenerator<SseMessage> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
 
   try {
     while (true) {
-      const { done, value } = await reader.read()
+      const { done, value } = await readChunk(reader, chunkTimeoutMs)
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })
@@ -37,6 +40,28 @@ export async function* readSse(body: ReadableStream<Uint8Array>): AsyncGenerator
     if (tail) yield tail
   } finally {
     reader.releaseLock()
+  }
+}
+
+async function readChunk(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  timeoutMs: number
+): Promise<{ done: boolean; value?: Uint8Array }> {
+  if (timeoutMs <= 0) return reader.read()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Provider stream paused for more than ${timeoutMs} ms.`)),
+          timeoutMs
+        )
+        timer.unref?.()
+      })
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
   }
 }
 

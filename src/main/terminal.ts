@@ -52,7 +52,6 @@ function loadPty(): PtyModule | null {
   try {
     // Required lazily so a missing or ABI-mismatched binary degrades to pipes
     // instead of taking the whole app down at startup.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     ptyModule = require('@lydell/node-pty') as PtyModule
   } catch (error) {
     ptyError = (error as Error).message
@@ -154,12 +153,7 @@ export class TerminalManager {
     return { id, backend: 'pty', shell }
   }
 
-  private createPipe(
-    id: string,
-    shell: string,
-    cwd: string,
-    reason: string
-  ): TerminalHandle {
+  private createPipe(id: string, shell: string, cwd: string, reason: string): TerminalHandle {
     const child = spawn(shell, pipeArgs(shell), {
       cwd,
       windowsHide: true,
@@ -198,7 +192,10 @@ export function resolveShell(): string {
     `${process.env.LOCALAPPDATA}\\Microsoft\\WindowsApps\\pwsh.exe`
   ].find((candidate) => existsSync(candidate))
 
-  return pwsh ?? `${process.env.SystemRoot ?? 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+  return (
+    pwsh ??
+    `${process.env.SystemRoot ?? 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+  )
 }
 
 export function shellLabel(): string {

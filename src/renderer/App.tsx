@@ -19,6 +19,7 @@ import TitleBar from './components/TitleBar'
 import TaskToast from './components/TaskToast'
 import UpdateToast from './components/UpdateToast'
 import { useStore, type SidePanel } from './store'
+import { chooseWorkspace, resetWorkspace } from './workspace'
 
 const SIDE_PANELS: Array<{ id: SidePanel; label: string; hint: string }> = [
   { id: 'explorer', label: 'Files', hint: 'Explorer' },
@@ -55,7 +56,10 @@ export default function App() {
       .then(async (bootstrap) => {
         store.init(bootstrap)
         // Restore whatever the main process already had (survives a reload).
-        const state = await window.forge.agent.state().catch(() => null)
+        const state = await window.forge.agent.state().catch((error) => {
+          console.warn('[bootstrap] agent state unavailable', error)
+          return null
+        })
         if (state) {
           store.setChanges(state.changes ?? [])
           store.setSessionId(state.id)
@@ -63,23 +67,41 @@ export default function App() {
         }
         // A task can already be mid-run when the window opens — after a reload,
         // or because the app was launched into one that was overdue.
-        for (const task of await window.forge.tasks.list().catch(() => [])) {
+        for (const task of await window.forge.tasks.list().catch((error) => {
+          console.warn('[bootstrap] tasks unavailable', error)
+          return []
+        })) {
           if (task.running) store.setTaskRunning(task.id, true)
         }
         // A live session survives a renderer reload, so the indicator has to
         // come back with it rather than waiting for the next status event.
-        store.setLive(await window.forge.live.status().catch(() => null))
-        store.setMcp(await window.forge.mcp.status().catch(() => []))
-        store.setGit(await window.forge.git.status().catch(() => null))
+        store.setLive(
+          await window.forge.live.status().catch((error) => {
+            console.warn('[bootstrap] live status unavailable', error)
+            return null
+          })
+        )
+        store.setMcp(
+          await window.forge.mcp.status().catch((error) => {
+            console.warn('[bootstrap] MCP status unavailable', error)
+            return []
+          })
+        )
+        store.setGit(
+          await window.forge.git.status().catch((error) => {
+            console.warn('[bootstrap] git status unavailable', error)
+            return null
+          })
+        )
       })
       .catch((error: Error) => store.pushError(`Startup failed: ${error.message}`))
 
     const unsubscribes = [
       window.forge.agent.onEvent(({ sessionId, event }) =>
-        useStore.getState().applyEvent(event, sessionId),
+        useStore.getState().applyEvent(event, sessionId)
       ),
       window.forge.agent.onSessionsChanged((sessions) =>
-        useStore.getState().setLiveSessions(sessions),
+        useStore.getState().setLiveSessions(sessions)
       ),
       // The agent opening a page is only useful if it is also shown.
       window.forge.live.onStatus((status) => useStore.getState().setLive(status)),
@@ -89,14 +111,14 @@ export default function App() {
         state.patchUi({ chatPane: 'browser' })
       }),
       window.forge.agent.onPermissionRequest((request) =>
-        useStore.getState().setPermission(request),
+        useStore.getState().setPermission(request)
       ),
       window.forge.agent.onPermissionCancelled((id) => {
         const current = useStore.getState().permission
         if (current?.id === id) useStore.getState().setPermission(null)
       }),
       window.forge.settings.onChanged((next) => useStore.getState().setSettings(next)),
-      window.forge.mcp.onStatus((statuses) => useStore.getState().setMcp(statuses)),
+      window.forge.mcp.onStatus((statuses) => useStore.getState().setMcp(statuses))
     ]
 
     return () => {
@@ -120,7 +142,7 @@ export default function App() {
     settings.chatFontSize,
     settings.editorFontSize,
     settings.fontFamily,
-    settings.uiScale,
+    settings.uiScale
   ])
 
   /* ---------------- application menu ---------------- */
@@ -131,8 +153,7 @@ export default function App() {
 
       switch (command) {
         case 'menu:open-folder': {
-          const picked = await window.forge.workspace.pick()
-          if (picked) window.location.reload()
+          await chooseWorkspace()
           break
         }
         case 'menu:new-session':
@@ -168,11 +189,13 @@ export default function App() {
           break
         case 'menu:check-updates':
           patchUi({ settingsOpen: true, settingsSection: 'about' })
-          await window.forge.updates.check().catch(() => undefined)
+          await window.forge.updates
+            .check()
+            .catch((error) => console.warn('[updates] check failed', error))
           break
       }
     },
-    [patchUi],
+    [patchUi]
   )
 
   /*
@@ -215,7 +238,7 @@ export default function App() {
     // Every other shortcut lives in the application menu; handling the same
     // keys here as well would toggle things twice.
     const offMenu = window.forge.menu.on((command, payload) => void runCommand(command, payload))
-    const offWorkspace = window.forge.menu.onWorkspaceChanged(() => window.location.reload())
+    const offWorkspace = window.forge.menu.onWorkspaceChanged(() => void resetWorkspace())
     return () => {
       offMenu()
       offWorkspace()
@@ -242,7 +265,6 @@ export default function App() {
         <PermissionDialog />
         <UpdateToast />
         <TaskToast />
-      <Pickers />
         <Pickers />
         {ui.settingsOpen && (
           <ErrorBoundary label="Settings">
@@ -288,7 +310,7 @@ export default function App() {
               axis="x"
               onDelta={(delta) =>
                 patchUi({
-                  sidebarWidth: clamp(useStore.getState().ui.sidebarWidth + delta, 170, 560),
+                  sidebarWidth: clamp(useStore.getState().ui.sidebarWidth + delta, 170, 560)
                 })
               }
             />
@@ -309,8 +331,8 @@ export default function App() {
                     terminalHeight: clamp(
                       useStore.getState().ui.terminalHeight - delta,
                       100,
-                      window.innerHeight - 260,
-                    ),
+                      window.innerHeight - 260
+                    )
                   })
                 }
               />

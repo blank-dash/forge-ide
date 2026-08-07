@@ -76,6 +76,14 @@ export interface TextBlock {
 export interface ThinkingBlock {
   type: 'thinking'
   text: string
+  /** Anthropic signature required to replay this block. */
+  signature?: string
+}
+
+export interface RedactedThinkingBlock {
+  type: 'redacted_thinking'
+  /** Opaque provider payload; persisted and replayed, never rendered. */
+  data: string
 }
 
 export interface ToolUseBlock {
@@ -108,14 +116,13 @@ export interface ImageBlock {
   mediaType: string
   /** Base64 without the data: prefix. */
   data: string
+  /** Source dimensions when known, used for context estimation. */
+  width?: number
+  height?: number
 }
 
 export type ContentBlock =
-  | TextBlock
-  | ThinkingBlock
-  | ToolUseBlock
-  | ToolResultBlock
-  | ImageBlock
+  TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ToolResultBlock | ImageBlock
 
 export interface Message {
   id: string
@@ -162,8 +169,8 @@ export function detectsThinking(modelId: string): boolean {
   return (
     /(^|\/)o[1-9](-|$)/.test(id) ||
     /gpt-5/.test(id) ||
-    /claude-(opus|sonnet)-4/.test(id) ||
-    /claude-3-7/.test(id) ||
+    /claude-(opus|sonnet)-[45]/.test(id) ||
+    /claude-(3-7|fable-5)/.test(id) ||
     /gemini-2\.5/.test(id) ||
     /deepseek-(r1|reasoner)/.test(id) ||
     /qwq|qwen3/.test(id) ||
@@ -175,9 +182,7 @@ export function detectsThinking(modelId: string): boolean {
 export function detectsVision(modelId: string): boolean {
   const id = modelId.toLowerCase()
   if (/embed|whisper|tts|moderation|rerank/.test(id)) return false
-  return (
-    /gpt-4|gpt-5|o[1-9](-|$)|claude|gemini|llava|pixtral|vision|qwen2?\.?5?-?vl/.test(id)
-  )
+  return /gpt-4|gpt-5|o[1-9](-|$)|claude|gemini|llava|pixtral|vision|qwen2?\.?5?-?vl/.test(id)
 }
 
 /* ------------------------------------------------------------------ */
@@ -220,13 +225,7 @@ export type EditApproval = 'review' | 'ask' | 'auto'
 
 export type CommandApproval = 'ask' | 'auto'
 
-export type ThemeName =
-  | 'warm-dark'
-  | 'dash'
-  | 'true-black'
-  | 'high-contrast'
-  | 'midnight'
-  | 'light'
+export type ThemeName = 'warm-dark' | 'dash' | 'true-black' | 'high-contrast' | 'midnight' | 'light'
 
 /**
  * How the agent should approach the work. Each becomes a block of instruction
@@ -290,9 +289,7 @@ export interface PermissionRequest {
 }
 
 export type PermissionDecision =
-  | { action: 'allow' }
-  | { action: 'allow_always' }
-  | { action: 'deny'; reason?: string }
+  { action: 'allow' } | { action: 'allow_always' } | { action: 'deny'; reason?: string }
 
 /* ------------------------------------------------------------------ */
 /* Pending changes (review screen)                                     */
@@ -448,11 +445,15 @@ export type AgentEvent =
 /* ------------------------------------------------------------------ */
 
 export interface Settings {
+  /** Disk format version; migrations keep older profiles readable. */
+  schemaVersion: number
   providers: ProviderConfig[]
   activeModel: ModelRef
   mode: InteractionMode
   /** Hard read-only: mutating tools are not offered to the model at all. */
   readOnly: boolean
+  /** Dry-run mode: mutating tools report what they would do instead of acting. */
+  dryRun: boolean
   /**
    * Approve everything without asking — edits, commands, MCP tools and paths
    * outside the workspace. Deny rules and read-only still win over it.
@@ -487,8 +488,22 @@ export interface Settings {
   chatFontSize: number
   fontFamily: string
   maxOutputTokens: number
+  /** Maximum provider/tool iterations per submitted message. */
+  maxAgentTurns: number
+  /** Attempts for a request that failed before streaming content. */
+  maxAttempts: number
+  /** Whole-message timeout, including tools. */
+  turnTimeoutMs: number
   temperature: number
   effort: ReasoningEffort
+  /** Optional USD cap for one model/tool round; 0 means unlimited. */
+  maxTurnCostUsd: number
+  /** Optional USD cap for this conversation; 0 means unlimited. */
+  maxSessionCostUsd: number
+  /** Timeout before the first response bytes arrive. */
+  providerFirstByteTimeoutMs: number
+  /** Timeout allowed between streamed response chunks. */
+  providerChunkTimeoutMs: number
   /** Extra instructions appended to the system prompt. */
   customInstructions: string
   showThinking: boolean

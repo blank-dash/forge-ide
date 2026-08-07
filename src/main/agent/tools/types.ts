@@ -68,9 +68,7 @@ export async function resolveTarget(
     throw new ToolError('A file path is required.')
   }
 
-  const absolute = path.isAbsolute(target)
-    ? path.normalize(target)
-    : path.resolve(ctx.cwd, target)
+  const absolute = path.isAbsolute(target) ? path.normalize(target) : path.resolve(ctx.cwd, target)
 
   // Compare real paths, not textual ones: a symlink inside the workspace can
   // point anywhere, and a purely lexical check would wave it straight through.

@@ -42,10 +42,7 @@ export function trimForContext(
   reservedForOutput: number
 ): TrimResult {
   const threshold = model.contextThreshold ?? DEFAULT_CONTEXT_THRESHOLD
-  const budget = Math.max(
-    4_000,
-    Math.floor(model.contextWindow * threshold) - reservedForOutput
-  )
+  const budget = Math.max(4_000, Math.floor(model.contextWindow * threshold) - reservedForOutput)
 
   let working = messages
   let estimate = estimateTokens(system, working)
@@ -194,17 +191,27 @@ function prefixSummary(message: Message, dropped: number, summary: string): Mess
   return { ...message, content: [{ type: 'text', text: note }, ...message.content] }
 }
 
+function imageTokenEstimate(block: Extract<ContentBlock, { type: 'image' }>): number {
+  if (block.width && block.height) {
+    return Math.ceil(block.width / 750) * Math.ceil(block.height / 750) * 1_600
+  }
+  // Base64 carries four characters for three bytes. This fallback scales small
+  // icons below screenshots without pretending the encoded bytes are text.
+  return Math.max(85, Math.ceil((block.data.length * 0.75) / 750))
+}
+
 function blockSize(block: ContentBlock): number {
   switch (block.type) {
     case 'text':
     case 'thinking':
       return block.text.length
+    case 'redacted_thinking':
+      return block.data.length
     case 'tool_use':
       return JSON.stringify(block.input ?? {}).length + block.name.length + 16
     case 'tool_result':
       return block.content.length + 16
     case 'image':
-      // Rough: a typical screenshot lands around 1.5k tokens.
-      return 5_000
+      return imageTokenEstimate(block) * CHARS_PER_TOKEN
   }
 }

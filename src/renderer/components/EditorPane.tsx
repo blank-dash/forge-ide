@@ -1,3 +1,4 @@
+import { basename } from '@shared/paths'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
 import { useStore } from '../store'
@@ -53,7 +54,10 @@ export default function EditorPane(): JSX.Element {
     void (async () => {
       for (const tab of useStore.getState().tabs) {
         if (tab.content !== tab.savedContent) continue
-        const fresh = await window.forge.workspace.read(tab.path).catch(() => null)
+        const fresh = await window.forge.workspace.read(tab.path).catch((error) => {
+          console.warn('[editor] reload failed', tab.path, error)
+          return null
+        })
         if (cancelled || fresh === null || fresh === tab.content) continue
         useStore.getState().reloadTab(tab.path, fresh)
       }
@@ -64,41 +68,44 @@ export default function EditorPane(): JSX.Element {
     }
   }, [fsRevision])
 
-  const beforeMount = useCallback((monaco: Monaco) => {
-    monaco.editor.defineTheme('forge-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '5d5a55', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'a98fd0' },
-        { token: 'string', foreground: '7fb069' },
-        { token: 'number', foreground: 'd4a24e' },
-        { token: 'type', foreground: '6a9fdc' }
-      ],
-      colors: {
-        'editor.background': '#100f0e',
-        'editor.foreground': '#ededeb',
-        'editorLineNumber.foreground': '#3d3c37',
-        'editorLineNumber.activeForeground': '#85817a',
-        'editor.selectionBackground': '#2c2c28',
-        'editor.lineHighlightBackground': '#1a1a18',
-        'editorCursor.foreground': '#d97757',
-        'editorIndentGuide.background1': '#232320',
-        'editorWidget.background': '#1a1a18',
-        'editorWidget.border': '#2e2e2a'
-      }
-    })
+  const beforeMount = useCallback(
+    (monaco: Monaco) => {
+      monaco.editor.defineTheme('forge-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          { token: 'comment', foreground: '5d5a55', fontStyle: 'italic' },
+          { token: 'keyword', foreground: 'a98fd0' },
+          { token: 'string', foreground: '7fb069' },
+          { token: 'number', foreground: 'd4a24e' },
+          { token: 'type', foreground: '6a9fdc' }
+        ],
+        colors: {
+          'editor.background': '#100f0e',
+          'editor.foreground': '#ededeb',
+          'editorLineNumber.foreground': '#3d3c37',
+          'editorLineNumber.activeForeground': '#85817a',
+          'editor.selectionBackground': '#2c2c28',
+          'editor.lineHighlightBackground': '#1a1a18',
+          'editorCursor.foreground': settings.accent,
+          'editorIndentGuide.background1': '#232320',
+          'editorWidget.background': '#1a1a18',
+          'editorWidget.border': '#2e2e2a'
+        }
+      })
 
-    monaco.editor.defineTheme('forge-light', {
-      base: 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#ffffff',
-        'editor.lineHighlightBackground': '#f5f4f0'
-      }
-    })
-  }, [])
+      monaco.editor.defineTheme('forge-light', {
+        base: 'vs',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#ffffff',
+          'editor.lineHighlightBackground': '#f5f4f0'
+        }
+      })
+    },
+    [settings.accent]
+  )
 
   /*
    * Two things the editor gains over a plain text box.
@@ -182,7 +189,7 @@ export default function EditorPane(): JSX.Element {
             role="tab"
           >
             {tab.content !== tab.savedContent && <span className="dot" />}
-            <span>{tab.path.split('/').pop()}</span>
+            <span>{basename(tab.path)}</span>
             <button
               className="close"
               onClick={(event) => {

@@ -157,7 +157,9 @@ export default function McpSettings({ servers, statuses, onChange }: Props) {
                         value={server.command}
                         placeholder="npx"
                         spellCheck={false}
-                        onChange={(event) => patch(index, { ...server, command: event.target.value })}
+                        onChange={(event) =>
+                          patch(index, { ...server, command: event.target.value })
+                        }
                       />
                     </div>
                     <div className="field" style={{ flex: 2 }}>
@@ -183,7 +185,9 @@ export default function McpSettings({ servers, statuses, onChange }: Props) {
                         .map(([key, value]) => `${key}=${value}`)
                         .join('\n')}
                       spellCheck={false}
-                      onChange={(event) => patch(index, { ...server, env: parseEnv(event.target.value) })}
+                      onChange={(event) =>
+                        patch(index, { ...server, env: parseEnv(event.target.value) })
+                      }
                     />
                   </div>
                 </>
@@ -208,7 +212,10 @@ export default function McpSettings({ servers, statuses, onChange }: Props) {
                       spellCheck={false}
                       onChange={(event) => {
                         try {
-                          patch(index, { ...server, headers: JSON.parse(event.target.value || '{}') })
+                          patch(index, {
+                            ...server,
+                            headers: JSON.parse(event.target.value || '{}')
+                          })
                         } catch {
                           /* keep the last valid object while typing */
                         }

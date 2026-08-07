@@ -94,7 +94,12 @@ export default function ChatNav() {
           badge={live?.active ? '●' : undefined}
           onClick={() => {
             patchUi({ chatPane: 'live' })
-            if (!live?.active && sessionId) setTimeout(() => window.dispatchEvent(new CustomEvent('forge:live-start', { detail: sessionId })), 0)
+            if (!live?.active && sessionId)
+              setTimeout(
+                () =>
+                  window.dispatchEvent(new CustomEvent('forge:live-start', { detail: sessionId })),
+                0
+              )
           }}
         />
         <NavRow

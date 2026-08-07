@@ -1,0 +1,1 @@
+# Ignore formatting-only revisions so `git blame` keeps pointing at the change that mattered.

@@ -9,7 +9,12 @@
 import assert from 'node:assert/strict'
 import { AgentSession } from '../src/main/agent/session'
 import { DEFAULT_SETTINGS } from '../src/shared/defaults'
-import type { AgentEvent, PermissionDecision, PermissionRequest, Settings } from '../src/shared/types'
+import type {
+  AgentEvent,
+  PermissionDecision,
+  PermissionRequest,
+  Settings
+} from '../src/shared/types'
 
 type Recorded = { events: AgentEvent[]; session: AgentSession }
 
@@ -61,10 +66,12 @@ function sseResponse(frames: string[]): Response {
 
 /** Turns event objects into the SSE frames an adapter expects. */
 function frames(events: Array<Record<string, unknown>>): string[] {
-  return events.map((event) => `event: ${String(event.type)}
+  return events.map(
+    (event) => `event: ${String(event.type)}
 data: ${JSON.stringify(event)}
 
-`)
+`
+  )
 }
 
 const TEXT_THEN_TOOL = [
@@ -231,9 +238,13 @@ export async function runSessionTests(
             resolve({ action: 'deny', reason: 'Interrupted.' })
             return
           }
-          signal.addEventListener('abort', () => resolve({ action: 'deny', reason: 'Interrupted.' }), {
-            once: true
-          })
+          signal.addEventListener(
+            'abort',
+            () => resolve({ action: 'deny', reason: 'Interrupted.' }),
+            {
+              once: true
+            }
+          )
           // Nobody answers; the only way out is the abort above.
           setTimeout(() => session?.abort(), 40)
         })

@@ -1,0 +1,76 @@
+/* Review screen                                                       */
+/* ------------------------------------------------------------------ */
+
+.review-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg-2);
+}
+.review-count .add,
+.add {
+  color: var(--green);
+}
+.review-count .del,
+.del {
+  color: var(--red);
+}
+
+.review-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 40px;
+  background: var(--bg-1);
+}
+
+.review-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-0);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+}
+
+.review-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.review-toggle:hover .review-path {
+  color: var(--accent);
+}
+
+.review-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-0);
+}
+
+.review-diff {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  background: var(--bg-inset);
+  border-top: 1px solid var(--border);
+  padding: 8px 10px;
+  max-height: 460px;
+  overflow: auto;
+  white-space: pre;
+}
+
+/* ------------------------------------------------------------------ */

@@ -114,9 +114,7 @@ export default function Palette({ items, placeholder, onClose, empty, initialQue
               }}
               onMouseEnter={() => setActive(index)}
             >
-              <span className="palette-label">
-                {highlight(entry.item.label, entry.match)}
-              </span>
+              <span className="palette-label">{highlight(entry.item.label, entry.match)}</span>
               {entry.item.detail && <span className="palette-detail">{entry.item.detail}</span>}
               {entry.item.hint && <span className="palette-hint">{entry.item.hint}</span>}
             </button>

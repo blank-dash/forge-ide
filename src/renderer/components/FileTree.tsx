@@ -1,3 +1,4 @@
+import { basename } from '@shared/paths'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FileEntry } from '@shared/types'
 import { useStore } from '../store'
@@ -17,7 +18,7 @@ export default function FileTree(): JSX.Element {
     // The agent reports absolute paths; the tree speaks relative ones.
     const set = new Set<string>()
     for (const absolute of changedFiles) {
-      set.add(absolute.replace(/\\/g, '/').split('/').slice(-1)[0])
+      set.add(basename(absolute))
     }
     return set
   }, [changedFiles])
@@ -100,9 +101,7 @@ export default function FileTree(): JSX.Element {
         </button>
       )
 
-      return entry.isDirectory && isOpen
-        ? [row, ...renderLevel(entry.path, depth + 1)]
-        : [row]
+      return entry.isDirectory && isOpen ? [row, ...renderLevel(entry.path, depth + 1)] : [row]
     })
   }
 

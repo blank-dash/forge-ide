@@ -67,7 +67,10 @@ export default function ConversationList({ variant }: Props) {
     try {
       // A conversation already open in the main process has live state; one that
       // is not has to be read back from disk.
-      const live = await window.forge.agent.state(id).catch(() => null)
+      const live = await window.forge.agent.state(id).catch((error) => {
+        console.warn('[sessions] live state unavailable', id, error)
+        return null
+      })
       if (live) {
         await window.forge.agent.activate(id)
         store.switchSession(id, {
@@ -181,7 +184,10 @@ export default function ConversationList({ variant }: Props) {
 
 /** Keeps the store's idea of the live session in step with the main process. */
 export async function syncSessionId(): Promise<void> {
-  const state = await window.forge.agent.state().catch(() => null)
+  const state = await window.forge.agent.state().catch((error) => {
+    console.warn('[sessions] active state unavailable', error)
+    return null
+  })
   if (state) useStore.getState().setSessionId(state.id)
 }
 

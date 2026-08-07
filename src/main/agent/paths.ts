@@ -41,7 +41,10 @@ export async function findMentionedPaths(text: string, limit = 12): Promise<stri
   // what the user pointed at. Never the parent of a named file.
   const checked = await Promise.all(
     [...candidates].slice(0, limit * 4).map(async (candidate) => {
-      const exists = await fs.stat(candidate).then(() => true, () => false)
+      const exists = await fs.stat(candidate).then(
+        () => true,
+        () => false
+      )
       return exists ? candidate : null
     })
   )

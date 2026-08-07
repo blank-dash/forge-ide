@@ -100,8 +100,10 @@ export function parseSkill(raw: string, fallbackId: string, source: Skill['sourc
   if (!body) return null
 
   const field = (key: string): string =>
-    new RegExp(`^${key}\\s*:\\s*(.+)$`, 'im').exec(front)?.[1]?.trim().replace(/^["']|["']$/g, '') ??
-    ''
+    new RegExp(`^${key}\\s*:\\s*(.+)$`, 'im')
+      .exec(front)?.[1]
+      ?.trim()
+      .replace(/^["']|["']$/g, '') ?? ''
 
   return {
     id: field('name') || fallbackId,

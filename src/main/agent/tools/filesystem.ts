@@ -47,7 +47,8 @@ export const readFileTool: ToolDef<ReadInput> = {
     const stat = await fs.stat(absolute).catch(() => null)
 
     if (!stat) throw new ToolError(`File not found: ${input.path}`)
-    if (stat.isDirectory()) throw new ToolError(`${input.path} is a directory. Use list_dir instead.`)
+    if (stat.isDirectory())
+      throw new ToolError(`${input.path} is a directory. Use list_dir instead.`)
     if (stat.size > MAX_READ_BYTES) {
       throw new ToolError(
         `File is ${(stat.size / 1e6).toFixed(1)} MB, too large to read whole. Use offset and limit.`
@@ -332,7 +333,8 @@ export const listDirTool: ToolDef<ListInput> = {
         .filter((entry) => !entry.name.startsWith('.') || entry.name === '.env.example')
         .filter((entry) => !IGNORED_DIRS.has(entry.name))
         .sort(
-          (a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name)
+          (a, b) =>
+            Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name)
         )
 
       for (const entry of sorted) {

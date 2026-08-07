@@ -41,13 +41,7 @@ function withTimezone(zone: string, body: () => void): void {
 }
 
 /** Local wall-clock moment, independent of the machine's timezone. */
-function local(
-  year: number,
-  month: number,
-  day: number,
-  hours = 0,
-  minutes = 0
-): number {
+function local(year: number, month: number, day: number, hours = 0, minutes = 0): number {
   return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime()
 }
 

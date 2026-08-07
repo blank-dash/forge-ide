@@ -56,7 +56,10 @@ export default function PromptSettings({ draft, patch }: Props) {
                   // Spaces would end the slash command halfway through its own
                   // name, so they never make it into one.
                   update(prompt.id, {
-                    name: event.target.value.trim().replace(/[^\w-]/g, '-').toLowerCase()
+                    name: event.target.value
+                      .trim()
+                      .replace(/[^\w-]/g, '-')
+                      .toLowerCase()
                   })
                 }
               />

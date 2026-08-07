@@ -9,12 +9,13 @@ import type { Skill } from './types'
  * prompts and pipelines for the tools that do the rendering, and say so.
  */
 
-const skill = (
-  id: string,
-  category: string,
-  description: string,
-  body: string
-): Skill => ({ id, category, description, body: body.trim(), source: 'builtin' })
+const skill = (id: string, category: string, description: string, body: string): Skill => ({
+  id,
+  category,
+  description,
+  body: body.trim(),
+  source: 'builtin'
+})
 
 /* ------------------------------------------------------------------ */
 /* Code                                                                */

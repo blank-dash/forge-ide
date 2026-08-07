@@ -7,7 +7,12 @@
  * pile of missed slots.
  */
 import assert from 'node:assert/strict'
-import { Scheduler, type SchedulerDeps, type SchedulerEvent, type TimerHandle } from '../src/main/scheduler'
+import {
+  Scheduler,
+  type SchedulerDeps,
+  type SchedulerEvent,
+  type TimerHandle
+} from '../src/main/scheduler'
 import type { ScheduledTask, TaskRunResult } from '../src/shared/types'
 
 const MINUTE = 60_000
@@ -226,9 +231,7 @@ export async function runSchedulerTests(
     const start = 10 * HOUR
     const { state, scheduler } = harness({
       now: start,
-      tasks: [
-        makeTask({ schedule: { kind: 'interval', everyMinutes: 60 }, nextRunAt: start })
-      ],
+      tasks: [makeTask({ schedule: { kind: 'interval', everyMinutes: 60 }, nextRunAt: start })],
       run: async () => {
         // The run itself takes 90 minutes — longer than its own interval.
         state.now += 90 * MINUTE
@@ -356,9 +359,7 @@ export async function runSchedulerTests(
     const now = 10 * HOUR
     const { state, scheduler } = harness({
       now,
-      tasks: [
-        makeTask({ id: 'once', schedule: { kind: 'once', atEpochMs: now }, nextRunAt: now })
-      ]
+      tasks: [makeTask({ id: 'once', schedule: { kind: 'once', atEpochMs: now }, nextRunAt: now })]
     })
 
     await scheduler.tick()

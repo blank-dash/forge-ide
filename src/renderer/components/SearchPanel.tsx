@@ -106,7 +106,11 @@ export default function SearchPanel() {
         </div>
       </div>
 
-      {error && <div className="field-error" style={{ margin: '0 10px' }}>{error}</div>}
+      {error && (
+        <div className="field-error" style={{ margin: '0 10px' }}>
+          {error}
+        </div>
+      )}
 
       <div className="tree search-results">
         {!busy && query.trim() && result?.hits.length === 0 && (

@@ -39,10 +39,17 @@ async function renderSvg(svg) {
     useContentSize: true
   })
 
-  const page = '<!doctype html><html><head><meta charset="utf-8"><style>' +
+  const page =
+    '<!doctype html><html><head><meta charset="utf-8"><style>' +
     'html,body{margin:0;padding:0;background:transparent;overflow:hidden}' +
-    'svg{display:block;width:' + MASTER + 'px;height:' + MASTER + 'px}' +
-    '</style></head><body>' + svg + '</body></html>'
+    'svg{display:block;width:' +
+    MASTER +
+    'px;height:' +
+    MASTER +
+    'px}' +
+    '</style></head><body>' +
+    svg +
+    '</body></html>'
 
   const scratch = path.join(os.tmpdir(), 'forge-icon-master.html')
   fs.writeFileSync(scratch, page, 'utf8')
@@ -81,7 +88,9 @@ app.whenReady().then(async () => {
 
       fs.mkdirSync(path.dirname(out.file), { recursive: true })
       fs.writeFileSync(out.file, png)
-      console.log('wrote ' + path.relative(ROOT, out.file) + ' (' + out.size + 'px, ' + png.length + ' bytes)')
+      console.log(
+        'wrote ' + path.relative(ROOT, out.file) + ' (' + out.size + 'px, ' + png.length + ' bytes)'
+      )
     }
 
     app.exit(0)

@@ -63,7 +63,7 @@ export const googleAdapter: ProviderAdapter = {
     let stopReason = 'stop'
     let callSeq = 0
 
-    for await (const frame of readSse(res.body)) {
+    for await (const frame of readSse(res.body, req.chunkTimeoutMs ?? 120_000)) {
       const chunk = safeParse<GeminiChunk>(frame.data)
       if (!chunk) continue
       if (chunk.error) throw new Error(chunk.error.message ?? 'Gemini stream error')

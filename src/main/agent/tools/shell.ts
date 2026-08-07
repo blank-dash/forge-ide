@@ -7,6 +7,7 @@ const MAX_TIMEOUT_MS = 600_000
 const ABANDON_GRACE_MS = 1500
 
 const MAX_OUTPUT_CHARS = 60_000
+const MAX_OUTPUT_LINES = 200
 
 /** Commands we refuse outright, regardless of permission mode. */
 const BLOCKED = [
@@ -37,7 +38,8 @@ export function shellInfo(): { file: string; args: string[]; label: string } {
 
 export const runCommandTool: ToolDef<ShellInput> = {
   name: 'run_command',
-  description: `Run a shell command in the workspace root using ${shellInfo().label}. ` +
+  description:
+    `Run a shell command in the workspace root using ${shellInfo().label}. ` +
     'Use it for builds, tests, linters, git and package managers. ' +
     'Prefer the dedicated file tools for reading, writing and searching — they are faster and safer. ' +
     'Interactive commands are not supported; there is no TTY.',
@@ -79,11 +81,9 @@ export const runCommandTool: ToolDef<ShellInput> = {
     const parts: string[] = []
     if (result.stdout) parts.push(result.stdout)
     if (result.stderr) parts.push(result.stderr.trim() ? `[stderr]\n${result.stderr}` : '')
-    const output = parts.filter(Boolean).join('\n').trim() || '(no output)'
+    const output = limitCommandOutput(parts.filter(Boolean).join('\n').trim() || '(no output)')
 
-    const status = result.timedOut
-      ? `Timed out after ${timeout} ms`
-      : `Exit code ${result.code}`
+    const status = result.timedOut ? `Timed out after ${timeout} ms` : `Exit code ${result.code}`
 
     return {
       content: truncate(`${status}\n\n${output}`, MAX_OUTPUT_CHARS),
@@ -120,7 +120,16 @@ function execute(
       // A group of its own, so stopping can take the whole tree rather than
       // only the shell. Windows has no process groups; taskkill /T covers it.
       detached: process.platform !== 'win32',
-      env: { ...process.env, FORGE_IDE: '1', GIT_PAGER: 'cat', PAGER: 'cat', NO_COLOR: '1' }
+      env: {
+        ...process.env,
+        FORGE_IDE: '1',
+        CI: '1',
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_PAGER: 'cat',
+        PAGER: 'cat',
+        NO_COLOR: '1'
+      },
+      stdio: ['ignore', 'pipe', 'pipe']
     })
 
     let stdout = ''
@@ -200,6 +209,17 @@ function execute(
     })
     child.on('close', (code) => finish(code ?? -1))
   })
+}
+
+function limitCommandOutput(text: string): string {
+  const lines = text.split('\n')
+  if (lines.length <= MAX_OUTPUT_LINES * 2) return text
+  const omitted = lines.length - MAX_OUTPUT_LINES * 2
+  return [
+    ...lines.slice(0, MAX_OUTPUT_LINES),
+    `… truncated ${omitted} lines; full output is not retained by the command tool …`,
+    ...lines.slice(-MAX_OUTPUT_LINES)
+  ].join('\n')
 }
 
 function countLines(text: string): number {

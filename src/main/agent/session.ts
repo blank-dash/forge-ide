@@ -13,6 +13,8 @@ import type {
   ToolUseBlock
 } from '@shared/types'
 import { computeCost, resolveModel, type ResolvedModel } from '../providers'
+import { retryDelay } from '../providers/types'
+import { mapLimit } from '../util/pool'
 import { ChangeTracker } from './changes'
 import { trimForContext } from './context'
 import { findMentionedPaths } from './paths'
@@ -33,9 +35,6 @@ import {
  * pressing stop feels like it did something.
  */
 const TOOL_ABANDON_MS = 2500
-
-const MAX_AGENT_TURNS = 80
-const MAX_ATTEMPTS = 3
 const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504, 529])
 
 export interface SessionDeps {
@@ -79,6 +78,7 @@ export class AgentSession {
   /** Paths the user named in this conversation; see findMentionedPaths. */
   private grants = new Set<string>()
   /** Messages sent while a turn was running, delivered at the next boundary. */
+  private repeatedTools = new Map<string, number>()
   private queued: Array<{ text: string; images: Array<{ mediaType: string; data: string }> }> = []
 
   constructor(private readonly deps: SessionDeps) {}
@@ -100,6 +100,7 @@ export class AgentSession {
     this.totals = emptyUsage()
     this.grants.clear()
     this.queued = []
+    this.repeatedTools.clear()
     this.changes.clear()
   }
 
@@ -186,10 +187,14 @@ export class AgentSession {
     this.running = true
     this.controller = new AbortController()
     const signal = this.controller.signal
+    const settings = this.deps.settings()
+    const turnLimit = Math.max(20, Math.min(500, settings.maxAgentTurns))
+    const timeout = setTimeout(() => this.controller?.abort(), settings.turnTimeoutMs)
+    timeout.unref?.()
     let truncated = false
 
     try {
-      for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
+      for (let turn = 0; turn < turnLimit; turn++) {
         if (signal.aborted) break
 
         const settings = this.deps.settings()
@@ -227,7 +232,17 @@ export class AgentSession {
           estimated: true
         })
 
+        const turnCostBefore = this.totals.costUsd
         const outcome = await this.runOneTurn(resolved, system, trimmed.messages, tools, signal)
+        if (this.shouldPauseForBudget(turnCostBefore, settings)) {
+          this.deps.emit({
+            type: 'notice',
+            message:
+              'Cost budget reached. Send another message to continue, or raise the budget in Settings.'
+          })
+          truncated = true
+          break
+        }
         if (!outcome) break
 
         if (outcome.toolUses.length === 0) {
@@ -251,22 +266,31 @@ export class AgentSession {
           // that require strict alternation reject.
           // Images ride as ordinary blocks in the same turn: only Anthropic
           // accepts one inside a tool result, and this shape works everywhere.
-          content: [...results, ...results.flatMap((entry) => entry.images ?? []), ...this.drainQueue()],
+          content: [
+            ...results,
+            ...results.flatMap((entry) => entry.images ?? []),
+            ...this.drainQueue()
+          ],
           createdAt: Date.now()
         })
 
         if (signal.aborted) break
-        if (turn === MAX_AGENT_TURNS - 1) {
+        if (turn === turnLimit - 1) {
+          this.deps.emit({
+            type: 'notice',
+            message: `Agent turn limit reached (${turnLimit}). Send another message to continue.`
+          })
           truncated = true
           this.deps.emit({
             type: 'notice',
-            message: `Stopped after ${MAX_AGENT_TURNS} tool rounds. Send another message to continue.`
+            message: `Stopped after ${turnLimit} tool rounds. Send another message to continue.`
           })
         }
       }
     } catch (error) {
       this.emitError(error)
     } finally {
+      clearTimeout(timeout)
       this.running = false
       this.controller = null
       this.persist()
@@ -294,10 +318,11 @@ export class AgentSession {
   ): Promise<{ messageId: string; toolUses: ToolUseBlock[] } | null> {
     const settings = this.deps.settings()
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= Math.max(1, Math.min(10, settings.maxAttempts)); attempt++) {
       const messageId = randomUUID()
       const blocks: ContentBlock[] = []
       const toolUses: ToolUseBlock[] = []
+      let thinkingSignature: string | undefined
       const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
       let stopReason = 'stop'
       let text = ''
@@ -311,11 +336,15 @@ export class AgentSession {
         const stream = resolved.adapter.stream({
           provider: resolved.provider,
           model: resolved.model,
+          sessionId: this.id,
           system,
           messages,
           tools: resolved.model.supportsTools ? toolSchemas(tools) : [],
           maxOutputTokens: Math.min(settings.maxOutputTokens, resolved.model.maxOutputTokens),
           temperature: resolved.model.temperature ?? settings.temperature,
+          continuation: undefined,
+          firstByteTimeoutMs: settings.providerFirstByteTimeoutMs,
+          chunkTimeoutMs: settings.providerChunkTimeoutMs,
           effort: settings.effort,
           // "Off" means off, whatever the model override says; otherwise an
           // explicit per-model budget beats the effort preset.
@@ -338,6 +367,12 @@ export class AgentSession {
               thinking += event.text
               emitted = true
               this.deps.emit({ type: 'thinking_delta', messageId, text: event.text })
+              break
+            case 'thinking_signature':
+              thinkingSignature = event.signature
+              break
+            case 'redacted_thinking':
+              blocks.push({ type: 'redacted_thinking', data: event.data })
               break
             case 'tool_use': {
               const block: ToolUseBlock = {
@@ -391,6 +426,7 @@ export class AgentSession {
             resolved,
             blocks,
             thinking,
+            thinkingSignature,
             text,
             [],
             usage,
@@ -400,7 +436,15 @@ export class AgentSession {
           return null
         }
 
-        const retryable = !emitted && attempt < MAX_ATTEMPTS && isRetryable(error)
+        if (signal.aborted) {
+          this.deps.emit({ type: 'turn_abandoned', messageId })
+          return null
+        }
+
+        const retryable =
+          !emitted &&
+          attempt < Math.max(1, Math.min(10, settings.maxAttempts)) &&
+          isRetryable(error)
         if (!retryable) {
           // Withdraw the turn before giving up. Without this its half-streamed
           // text stays in any listener's buffer and can be reported as the
@@ -426,10 +470,11 @@ export class AgentSession {
         // content and must not be left behind as an empty bubble.
         this.deps.emit({ type: 'turn_abandoned', messageId })
 
-        const delay = 800 * 2 ** (attempt - 1)
+        const maxAttempts = Math.max(1, Math.min(10, settings.maxAttempts))
+        const delay = retryDelay(error, attempt)
         this.deps.emit({
           type: 'notice',
-          message: `${(error as Error).message} Retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${MAX_ATTEMPTS}).`
+          message: `${(error as Error).message} Retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${maxAttempts}).`
         })
         await sleep(delay, signal)
         continue
@@ -440,6 +485,7 @@ export class AgentSession {
         resolved,
         blocks,
         thinking,
+        thinkingSignature,
         text,
         toolUses,
         usage,
@@ -457,13 +503,14 @@ export class AgentSession {
     resolved: ResolvedModel,
     blocks: ContentBlock[],
     thinking: string,
+    thinkingSignature: string | undefined,
     text: string,
     toolUses: ToolUseBlock[],
     usage: Omit<TokenUsage, 'costUsd'>,
     stopReason: string,
     startedAt: number
   ): void {
-    if (thinking) blocks.push({ type: 'thinking', text: thinking })
+    if (thinking) blocks.push({ type: 'thinking', text: thinking, signature: thinkingSignature })
     if (text) blocks.push({ type: 'text', text })
     blocks.push(...toolUses)
 
@@ -533,21 +580,59 @@ export class AgentSession {
     signal: AbortSignal
   ): Promise<ToolResultBlock[]> {
     const results: ToolResultBlock[] = []
+    let cursor = 0
 
-    for (const use of toolUses) {
-      if (signal.aborted) {
-        const stopped = errorResult(use.id, 'Interrupted by the user before this tool ran.')
-        results.push(stopped)
-        this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result: stopped })
+    while (cursor < toolUses.length) {
+      const use = toolUses[cursor]
+      const tool = findTool(tools, use.name)
+      if (!tool?.readOnly) {
+        results.push(await this.runAndEmitTool(use, messageId, tools, signal))
+        cursor++
         continue
       }
 
-      const result = await this.abortable(this.runOneTool(use, tools, signal), signal, use.id)
-      results.push(result)
-      this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result })
+      const batch: ToolUseBlock[] = []
+      while (cursor < toolUses.length && findTool(tools, toolUses[cursor].name)?.readOnly) {
+        batch.push(toolUses[cursor++])
+      }
+      results.push(
+        ...(await mapLimit(batch, 6, (entry) =>
+          this.runAndEmitTool(entry, messageId, tools, signal)
+        ))
+      )
     }
 
     return results
+  }
+
+  private async runAndEmitTool(
+    use: ToolUseBlock,
+    messageId: string,
+    tools: ToolDef<Record<string, never>>[],
+    signal: AbortSignal
+  ): Promise<ToolResultBlock> {
+    const fingerprint = `${use.name}:${stableStringify(use.input)}`
+    const repetitions = (this.repeatedTools.get(fingerprint) ?? 0) + 1
+    this.repeatedTools.clear()
+    this.repeatedTools.set(fingerprint, repetitions)
+    if (repetitions >= 6) {
+      this.controller?.abort()
+      this.deps.emit({
+        type: 'notice',
+        message: `Stopped after ${repetitions} identical ${use.name} calls. Change approach before continuing.`
+      })
+      return errorResult(use.id, 'Repeated identical tool call stopped to prevent a loop.')
+    }
+
+    const result = signal.aborted
+      ? errorResult(use.id, 'Interrupted by the user before this tool ran.')
+      : await this.abortable(this.runOneTool(use, tools, signal), signal, use.id)
+    if (repetitions >= 3) {
+      result.content +=
+        '\n\nWarning: this identical tool call is repeating and its result may not have changed. Try a different approach.'
+    }
+    this.deps.emit({ type: 'tool_end', messageId, toolUseId: use.id, result })
+    return result
   }
 
   private async runOneTool(
@@ -704,6 +789,14 @@ export class AgentSession {
     })
   }
 
+  private shouldPauseForBudget(before: number, settings: Settings): boolean {
+    const spent = this.totals.costUsd
+    return (
+      (settings.maxSessionCostUsd > 0 && spent >= settings.maxSessionCostUsd) ||
+      (settings.maxTurnCostUsd > 0 && spent - before >= settings.maxTurnCostUsd)
+    )
+  }
+
   private persist(): void {
     if (!this.deps.settings().autoSaveSessions) return
     if (this.messages.length === 0) return
@@ -757,6 +850,13 @@ function lastUserText(messages: Message[]): string {
     if (text) return text
   }
   return ''
+}
+
+function stableStringify(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return JSON.stringify(value)
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+  )
 }
 
 function errorResult(toolUseId: string, message: string): ToolResultBlock {

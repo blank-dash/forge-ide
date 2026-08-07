@@ -69,7 +69,10 @@ export const globTool: ToolDef<GlobInput> = {
     const withTimes = await Promise.all(
       matches.slice(0, 5000).map(async (file) => ({
         file,
-        mtime: await fs.stat(file).then((stat) => stat.mtimeMs).catch(() => 0)
+        mtime: await fs
+          .stat(file)
+          .then((stat) => stat.mtimeMs)
+          .catch(() => 0)
       }))
     )
 
@@ -200,6 +203,7 @@ export async function buildProjectSnapshot(cwd: string, maxFiles = 400): Promise
   }).catch(() => [] as string[])
 
   const shown = files.slice(0, maxFiles).sort()
-  const extra = files.length > shown.length ? `\n… and ${files.length - shown.length} more files` : ''
+  const extra =
+    files.length > shown.length ? `\n… and ${files.length - shown.length} more files` : ''
   return `${shown.map((file) => file.split(path.sep).join('/')).join('\n')}${extra}`
 }

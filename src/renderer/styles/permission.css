@@ -1,0 +1,110 @@
+/* Permission dialog                                                   */
+/* ------------------------------------------------------------------ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  width: min(720px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dialog-head {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dialog-head h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dialog-head p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.dialog-body {
+  padding: 12px 18px;
+  overflow: auto;
+  flex: 1;
+}
+
+.dialog-foot {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.code-box {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  white-space: pre;
+  overflow: auto;
+  max-height: 44vh;
+}
+
+.btn {
+  padding: 6px 13px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-1);
+  font-size: 12.5px;
+  transition: all 120ms var(--ease);
+}
+.btn:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1008;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: color-mix(in oklab, var(--accent) 88%, white);
+  color: #1a1008;
+}
+.btn-danger {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 40%, transparent);
+}
+.btn-danger:hover {
+  background: var(--red-bg);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.kbd-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+/* ------------------------------------------------------------------ */

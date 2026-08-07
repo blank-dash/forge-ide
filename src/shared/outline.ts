@@ -26,13 +26,18 @@ const SYMBOL_PATTERNS: Array<{ kind: string; pattern: RegExp }> = [
   { kind: 'type', pattern: /^\s*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)/ },
   {
     kind: 'const',
-    pattern: /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s*)?(?:\(|function|<)/
+    pattern:
+      /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s*)?(?:\(|function|<)/
   },
   { kind: 'def', pattern: /^\s*def\s+([A-Za-z_][\w]*)/ },
   { kind: 'class', pattern: /^\s*class\s+([A-Za-z_][\w]*)/ },
   { kind: 'func', pattern: /^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_][\w]*)/ },
   { kind: 'fn', pattern: /^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_][\w]*)/ },
-  { kind: 'method', pattern: /^\s{2,}(?:public|private|protected|static|async|\s)*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*[:{]/ },
+  {
+    kind: 'method',
+    pattern:
+      /^\s{2,}(?:public|private|protected|static|async|\s)*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*[:{]/
+  },
   { kind: 'heading', pattern: /^(#{1,6})\s+(.+)$/ }
 ]
 

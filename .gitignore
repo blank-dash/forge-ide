@@ -6,6 +6,7 @@ release/
 .DS_Store
 *.tsbuildinfo
 .vite/
+coverage/
 
 # Generated from build/icon.svg by `npm run icons`, but committed so CI and
 # electron-builder do not need a rasterisation step.

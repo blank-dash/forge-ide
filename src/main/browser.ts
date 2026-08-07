@@ -273,7 +273,10 @@ export class Browser {
         })()`,
         true
       )
-      .catch(() => [])) as Array<{ title: string; href: string; snippet: string }>
+      .catch((error) => {
+        console.warn('[browser] result extraction failed', error)
+        return []
+      })) as Array<{ title: string; href: string; snippet: string }>
 
     return raw
       .map((entry) => ({ ...entry, url: unwrap(entry.href) }))

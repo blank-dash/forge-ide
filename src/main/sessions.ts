@@ -30,19 +30,26 @@ export class SessionStore {
    * until something else happens to refresh it.
    */
   async flush(): Promise<void> {
-    await this.writeQueue.catch(() => undefined)
+    await this.writeQueue.catch((error) => console.warn('[sessions] queued write failed', error))
   }
 
   async list(): Promise<SessionSummary[]> {
     await this.flush()
     const dir = this.dir
-    const names = await fs.readdir(dir).catch(() => [] as string[])
+    const names = await fs.readdir(dir).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('[sessions] list failed', dir, error)
+      return [] as string[]
+    })
 
     const summaries = await Promise.all(
       names
         .filter((name) => name.endsWith('.json'))
         .map(async (name) => {
-          const raw = await fs.readFile(path.join(dir, name), 'utf8').catch(() => null)
+          const raw = await fs.readFile(path.join(dir, name), 'utf8').catch((error) => {
+            console.warn('[sessions] read failed', error)
+            return null
+          })
           if (!raw) return null
           try {
             const record = JSON.parse(raw) as SessionRecord
@@ -64,7 +71,12 @@ export class SessionStore {
   }
 
   async load(id: string): Promise<SessionRecord | null> {
-    const raw = await fs.readFile(path.join(this.dir, `${safeId(id)}.json`), 'utf8').catch(() => null)
+    const raw = await fs
+      .readFile(path.join(this.dir, `${safeId(id)}.json`), 'utf8')
+      .catch((error) => {
+        console.warn('[sessions] read failed', error)
+        return null
+      })
     if (!raw) return null
     try {
       return JSON.parse(raw) as SessionRecord
@@ -87,7 +99,7 @@ export class SessionStore {
         )
         await this.prune(dir)
       })
-      .catch(() => undefined)
+      .catch((error) => console.warn('[sessions] save failed', record.id, error))
 
     return this.writeQueue as Promise<void>
   }
@@ -110,7 +122,9 @@ export class SessionStore {
       }))
     )
 
-    const oldest = stats.sort((a, b) => a.mtime - b.mtime).slice(0, names.length - MAX_SESSIONS_PER_WORKSPACE)
+    const oldest = stats
+      .sort((a, b) => a.mtime - b.mtime)
+      .slice(0, names.length - MAX_SESSIONS_PER_WORKSPACE)
     await Promise.all(oldest.map((entry) => fs.rm(path.join(dir, entry.name), { force: true })))
   }
 }

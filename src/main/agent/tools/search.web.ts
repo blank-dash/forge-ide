@@ -73,7 +73,9 @@ export function makeWebTools(scout: Browser): ToolDef<never>[] {
 
       return {
         content: shown
-          .map((entry, index) => `${index + 1}. ${entry.title}\n   ${entry.url}\n   ${entry.snippet}`)
+          .map(
+            (entry, index) => `${index + 1}. ${entry.title}\n   ${entry.url}\n   ${entry.snippet}`
+          )
           .join('\n\n'),
         display: {
           kind: 'list',

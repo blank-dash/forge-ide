@@ -264,8 +264,10 @@ const api = {
     /** Every file in the workspace, for quick open. Cached in the main process. */
     files: () => call<string[]>('index:files'),
     refresh: () => call<string[]>('index:refresh'),
-    search: (query: string, options: { regex?: boolean; caseSensitive?: boolean; include?: string } = {}) =>
-      call<SearchResult>('index:search', { query, ...options }),
+    search: (
+      query: string,
+      options: { regex?: boolean; caseSensitive?: boolean; include?: string } = {}
+    ) => call<SearchResult>('index:search', { query, ...options }),
     onFilesChanged: (handler: () => void) => subscribe('files:changed', handler)
   },
 
@@ -276,7 +278,8 @@ const api = {
 
   checkpoints: {
     list: () => call<Checkpoint[]>('checkpoints:list'),
-    restore: (id: string) => call<{ restored: number; problems: string[] }>('checkpoints:restore', id),
+    restore: (id: string) =>
+      call<{ restored: number; problems: string[] }>('checkpoints:restore', id),
     remove: (id: string) => call<boolean>('checkpoints:remove', id),
     onChanged: (handler: () => void) => subscribe('checkpoints:changed', handler)
   },

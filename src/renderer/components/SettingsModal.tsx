@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProviderConfig, Settings } from '@shared/types'
+import { nextProviderId, validateProviderIds } from '@shared/settings'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import AccountSettings from './AccountSettings'
@@ -41,7 +42,7 @@ export default function SettingsModal() {
   /**
    * The agent writes settings too: an "always allow" answer adds a rule, and
    * dragging a panel saves the layout. Without folding those in, saving this
-   * dialog would quietly undo them — so every key the user has not touched
+   * dialog would quietly undo them вЂ” so every key the user has not touched
    * follows what is on disk.
    */
   const syncedFrom = useRef(stored)
@@ -68,6 +69,7 @@ export default function SettingsModal() {
     setSaving(true)
     setError(null)
     try {
+      validateProviderIds(draft.providers)
       const next = await window.forge.settings.set(draft)
       useStore.getState().setSettings(next)
       setDraft(next)
@@ -120,9 +122,9 @@ export default function SettingsModal() {
                 <h3>Providers &amp; models</h3>
                 <p>
                   Connect any model you have an API key for. Pick the API format your endpoint
-                  speaks — most third-party and local servers speak OpenAI — set the base URL, and
-                  add the model ids you want in the picker. Every model can carry its own context
-                  window, limits, pricing and request parameters.
+                  speaks вЂ” most third-party and local servers speak OpenAI вЂ” set the base URL,
+                  and add the model ids you want in the picker. Every model can carry its own
+                  context window, limits, pricing and request parameters.
                 </p>
 
                 {draft.providers.map((provider, index) => (
@@ -171,8 +173,8 @@ export default function SettingsModal() {
               <>
                 <h3>Permissions</h3>
                 <p>
-                  Chat and Edit are layouts, not permission levels — the agent has exactly the same
-                  tools in both. What it is allowed to do is set here.
+                  Chat and Edit are layouts, not permission levels вЂ” the agent has exactly the
+                  same tools in both. What it is allowed to do is set here.
                 </p>
 
                 <label className="switch">
@@ -181,7 +183,7 @@ export default function SettingsModal() {
                     checked={draft.readOnly}
                     onChange={(event) => patch({ readOnly: event.target.checked })}
                   />
-                  Read-only — mutating tools are not offered to the model at all
+                  Read-only вЂ” mutating tools are not offered to the model at all
                 </label>
                 <div className="hint" style={{ marginBottom: 12 }}>
                   A hard boundary: no allow rule can unlock it. Reading a file outside the workspace
@@ -195,7 +197,7 @@ export default function SettingsModal() {
                     disabled={draft.readOnly}
                     onChange={(event) => patch({ bypassPermissions: event.target.checked })}
                   />
-                  Bypass permissions — never ask about anything
+                  Bypass permissions вЂ” never ask about anything
                 </label>
                 <div
                   className={draft.bypassPermissions ? 'warn-note' : 'hint'}
@@ -203,7 +205,7 @@ export default function SettingsModal() {
                 >
                   {draft.bypassPermissions
                     ? 'Every edit, shell command, MCP tool call and access to files outside this project runs immediately, with no dialog. Deny rules and read-only still apply; nothing else does.'
-                    : 'Approves everything without a prompt — edits, commands, MCP tools and paths outside the workspace. Deny rules and read-only still win over it.'}
+                    : 'Approves everything without a prompt вЂ” edits, commands, MCP tools and paths outside the workspace. Deny rules and read-only still win over it.'}
                 </div>
 
                 <div className="row">
@@ -234,7 +236,7 @@ export default function SettingsModal() {
 
                 <RuleList
                   title="Always allow"
-                  hint="Rules like Bash(git status *), Edit(src/**), Write(docs/**). Added automatically when you pick “always allow” in a prompt."
+                  hint="Rules like Bash(git status *), Edit(src/**), Write(docs/**). Added automatically when you pick вЂњalways allowвЂќ in a prompt."
                   rules={draft.allowRules}
                   placeholder="Bash(npm test *)"
                   onChange={(allowRules) => patch({ allowRules })}
@@ -250,7 +252,7 @@ export default function SettingsModal() {
 
                 <RuleList
                   title="Folders outside the workspace"
-                  hint="Directories the agent may read and write outside the open project. Added when you approve an outside path with “always allow”."
+                  hint="Directories the agent may read and write outside the open project. Added when you approve an outside path with вЂњalways allowвЂќ."
                   rules={draft.externalRoots}
                   placeholder="C:\\Users\\me\\notes"
                   onChange={(externalRoots) => patch({ externalRoots })}
@@ -372,12 +374,12 @@ export default function SettingsModal() {
                   <textarea
                     className="textarea"
                     value={draft.customInstructions}
-                    placeholder="Appended to the system prompt for every session — coding conventions, preferred libraries, tone."
+                    placeholder="Appended to the system prompt for every session вЂ” coding conventions, preferred libraries, tone."
                     onChange={(event) => patch({ customInstructions: event.target.value })}
                   />
                   <div className="hint">
                     Per-project instructions go in a FORGE.md, AGENTS.md or CLAUDE.md at the
-                    workspace root — those are picked up automatically.
+                    workspace root вЂ” those are picked up automatically.
                   </div>
                 </div>
               </>
@@ -518,7 +520,7 @@ export default function SettingsModal() {
                         }
                       }}
                     >
-                      Export to a file…
+                      Export to a fileвЂ¦
                     </button>
                     <button
                       className="btn"
@@ -534,7 +536,7 @@ export default function SettingsModal() {
                         }
                       }}
                     >
-                      Import…
+                      ImportвЂ¦
                     </button>
                     <span style={{ flex: 2 }} />
                   </div>
@@ -554,8 +556,8 @@ export default function SettingsModal() {
                 <div className="field">
                   <label>Environment</label>
                   <div className="hint">
-                    {bootstrap?.platform} · agent shell {bootstrap?.shellLabel} · terminal{' '}
-                    {bootstrap?.terminalShell} ·{' '}
+                    {bootstrap?.platform} В· agent shell {bootstrap?.shellLabel} В· terminal{' '}
+                    {bootstrap?.terminalShell} В·{' '}
                     {bootstrap?.gitAvailable ? 'git found' : 'git not found'}
                   </div>
                 </div>
@@ -569,13 +571,13 @@ export default function SettingsModal() {
               onClick={() => void save()}
               disabled={!dirty || saving}
             >
-              {saving ? 'Saving…' : dirty ? t('Save changes') : t('Saved')}
+              {saving ? 'SavingвЂ¦' : dirty ? t('Save changes') : t('Saved')}
             </button>
             <button className="btn" onClick={() => setDraft(stored)} disabled={!dirty}>
               Revert
             </button>
             {error && <span style={{ color: 'var(--red)', fontSize: 12 }}>{error}</span>}
-            <span className="kbd-hint">{t('Ctrl+S save · Esc close')}</span>
+            <span className="kbd-hint">{t('Ctrl+S save В· Esc close')}</span>
           </div>
         </div>
       </div>
@@ -595,7 +597,7 @@ function UpdatePanel() {
       <div className="field">
         <label>Updates</label>
         <div className="hint">
-          Available in the installed build only — a checkout run from source updates with git.
+          Available in the installed build only вЂ” a checkout run from source updates with git.
         </div>
       </div>
     )
@@ -637,7 +639,7 @@ function UpdatePanel() {
             disabled={busy || status.state === 'checking' || status.state === 'downloading'}
             onClick={() => void run(() => window.forge.updates.check())}
           >
-            {status.state === 'checking' ? 'Checking…' : 'Check for updates'}
+            {status.state === 'checking' ? 'CheckingвЂ¦' : 'Check for updates'}
           </button>
         )}
         <span style={{ flex: 3 }} />
@@ -661,11 +663,11 @@ function describeUpdate(
 ): string {
   switch (status.state) {
     case 'checking':
-      return 'Looking for a newer release…'
+      return 'Looking for a newer releaseвЂ¦'
     case 'available':
       return `Version ${status.version} is available. Nothing downloads until you say so.`
     case 'downloading':
-      return `Downloading… ${status.percent ?? 0}%`
+      return `DownloadingвЂ¦ ${status.percent ?? 0}%`
     case 'ready':
       return `Version ${status.version} is ready. Forge dash will restart to install it.`
     case 'none':
@@ -707,7 +709,7 @@ function RuleList({ title, hint, rules, placeholder, onChange }: RuleListProps) 
               className="icon-btn danger"
               onClick={() => onChange(rules.filter((entry) => entry !== rule))}
             >
-              ×
+              Г—
             </button>
           </div>
         ))}
@@ -732,11 +734,10 @@ function RuleList({ title, hint, rules, placeholder, onChange }: RuleListProps) 
 }
 
 function newProvider(existing: ProviderConfig[]): ProviderConfig {
-  let index = existing.length + 1
-  while (existing.some((provider) => provider.id === `custom-${index}`)) index++
+  const id = nextProviderId('custom', existing)
   return {
-    id: `custom-${index}`,
-    name: `Custom provider ${index}`,
+    id,
+    name: `Custom provider ${id.replace('custom-', '') || '1'}`,
     kind: 'openai',
     baseUrl: 'https://api.example.com/v1',
     apiKey: '',

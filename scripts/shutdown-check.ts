@@ -79,7 +79,9 @@ async function main(): Promise<void> {
 main().then(
   () => process.exit(0),
   (error: Error) => {
-    console.error(`${String.fromCharCode(10)}shutdown check FAILED${String.fromCharCode(10)}  ${error.message}`)
+    console.error(
+      `${String.fromCharCode(10)}shutdown check FAILED${String.fromCharCode(10)}  ${error.message}`
+    )
     process.exit(1)
   }
 )

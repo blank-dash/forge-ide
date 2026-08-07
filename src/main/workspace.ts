@@ -53,7 +53,10 @@ export class Workspace {
   /** One directory level; the tree lazily loads children as the user expands. */
   async list(relative: string): Promise<FileEntry[]> {
     const target = this.resolve(relative)
-    const entries = await fs.readdir(target, { withFileTypes: true }).catch(() => [])
+    const entries = await fs.readdir(target, { withFileTypes: true }).catch((error) => {
+      console.warn('[workspace] list failed', target, error)
+      return []
+    })
 
     const mapped = await Promise.all(
       entries

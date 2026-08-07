@@ -13,7 +13,10 @@ export default function SkillSettings({ disabled, onChange }: Props) {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    void window.forge.skills.list().then(setSkills).catch(() => setSkills([]))
+    void window.forge.skills
+      .list()
+      .then(setSkills)
+      .catch(() => setSkills([]))
   }, [])
 
   const groups = useMemo(() => {
@@ -41,9 +44,9 @@ export default function SkillSettings({ disabled, onChange }: Props) {
     <>
       <h3>Skills</h3>
       <p>
-        Reusable instruction packs. The agent sees only the names and one-line summaries — it
-        loads a full skill with the <code>use_skill</code> tool when it needs one, so a large
-        library costs almost no context.
+        Reusable instruction packs. The agent sees only the names and one-line summaries — it loads
+        a full skill with the <code>use_skill</code> tool when it needs one, so a large library
+        costs almost no context.
       </p>
 
       <div className="row" style={{ marginBottom: 12 }}>
@@ -126,8 +129,8 @@ export default function SkillSettings({ disabled, onChange }: Props) {
       </p>
       <p className="hint">
         A skill is a markdown file with <code>name</code>, <code>description</code> and{' '}
-        <code>category</code> in its front matter, then the instructions. Project skills live in
-        the workspace and travel with the repository; global ones follow you between projects.
+        <code>category</code> in its front matter, then the instructions. Project skills live in the
+        workspace and travel with the repository; global ones follow you between projects.
       </p>
       <div className="row">
         <button className="btn" onClick={() => void window.forge.skills.openFolder('global')}>

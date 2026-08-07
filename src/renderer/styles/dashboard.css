@@ -1,0 +1,988 @@
+/* Full-window chat mode                                               */
+/* ------------------------------------------------------------------ */
+
+.chat-full {
+  flex: 1;
+  background: var(--bg-1);
+  min-width: 0;
+}
+
+.chat-full-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 0 12px;
+}
+
+.chat-column {
+  width: min(780px, 100%);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.chat-full .msg {
+  padding: 0;
+  margin-bottom: 22px;
+  font-size: calc(var(--chat-size) + 1px);
+  line-height: 1.68;
+}
+
+.chat-full .msg-user {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 11px 14px;
+}
+
+.chat-full-composer {
+  flex: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  padding: 10px 0 4px;
+}
+
+.chat-full-composer .composer {
+  border-top: none;
+  padding: 0;
+}
+
+.chat-welcome {
+  padding: 8vh 0 40px;
+  color: var(--fg-2);
+}
+.chat-welcome h1 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg-0);
+}
+.chat-welcome p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 60ch;
+}
+.chat-welcome-hint code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.convo-search {
+  flex: none;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.convo-search .input {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.convo-list .session-row.active {
+  background: var(--bg-3);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.titlebar-modes {
+  padding: 0;
+  gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px;
+}
+.titlebar-modes > button[role='tab'] {
+  padding: 2px 14px;
+  font-size: 11.5px;
+}
+.titlebar-modes > button[role='tab'].active {
+  background: var(--bg-0);
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.brand-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: block;
+}
+
+/* ------------------------------------------------------------------ */
+/* Terminal tabs                                                       */
+/* ------------------------------------------------------------------ */
+
+.terminal-stack {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.terminal-host {
+  height: 100%;
+  padding: 6px 8px;
+}
+
+.term-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.term-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg-3);
+}
+.term-tab:hover {
+  background: var(--bg-2);
+  color: var(--fg-1);
+}
+.term-tab.active {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+.term-tab .close {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.5;
+}
+.term-tab .close:hover {
+  opacity: 1;
+  color: var(--red);
+}
+
+/* ------------------------------------------------------------------ */
+/* Mode switch                                                         */
+/* ------------------------------------------------------------------ */
+
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 7px;
+}
+
+.mode-switch > button[role='tab'] {
+  padding: 3px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--fg-2);
+  border: 1px solid transparent;
+  transition: all 120ms var(--ease);
+}
+.mode-switch > button[role='tab']:hover {
+  color: var(--fg-0);
+  background: var(--bg-2);
+}
+.mode-switch > button[role='tab'].active {
+  background: var(--bg-3);
+  border-color: var(--border-strong);
+  color: var(--fg-0);
+  font-weight: 500;
+}
+
+.mini-select {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--fg-2);
+  outline: none;
+  cursor: pointer;
+}
+.mini-select:hover {
+  color: var(--fg-0);
+  border-color: var(--fg-3);
+}
+
+.notice-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 14px 12px;
+  padding: 7px 10px;
+  border-left: 2px solid var(--yellow);
+  background: color-mix(in oklab, var(--yellow) 8%, transparent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 11.5px;
+  color: var(--fg-1);
+  line-height: 1.5;
+}
+
+.warn-note {
+  border-left: 2px solid var(--yellow);
+  padding-left: 10px;
+  color: var(--fg-2) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings extras                                                     */
+/* ------------------------------------------------------------------ */
+
+.chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.model-row {
+  display: block;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.model-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.model-line.subtle {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.narrow-number {
+  flex: 0 0 92px;
+  padding: 5px 7px;
+}
+
+.model-advanced {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-inset);
+}
+.model-advanced .field {
+  margin-bottom: 10px;
+}
+
+.switch.small {
+  font-size: 11px;
+  gap: 6px;
+}
+.switch.small input {
+  width: 26px;
+  height: 15px;
+}
+.switch.small input::after {
+  width: 9px;
+  height: 9px;
+}
+.switch.small input:checked::after {
+  transform: translateX(11px);
+}
+
+.badge.err {
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 45%, transparent);
+}
+
+.icon-btn.active {
+  color: var(--accent);
+  background: var(--bg-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Model picker                                                        */
+/* ------------------------------------------------------------------ */
+
+.popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 300px;
+  max-height: 380px;
+  overflow-y: auto;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  padding: 4px;
+}
+
+.popover-group {
+  padding: 7px 10px 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fg-3);
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--fg-1);
+}
+.popover-item:hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+}
+.popover-item.active {
+  color: var(--accent);
+}
+.popover-item .check {
+  width: 12px;
+  flex: none;
+  font-size: 10px;
+}
+.popover-item .sub {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+
+/* Profile corner */
+
+.status-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-2);
+  padding: 0 2px;
+  max-width: 180px;
+}
+.status-profile:hover {
+  color: var(--fg-0);
+}
+
+.status-avatar {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--sans);
+}
+
+/* Brand mark */
+
+.brand-svg {
+  display: block;
+  border-radius: 22%;
+  flex: none;
+}
+
+/*
+ * The working indicator. A monospace slot keeps the glyph from shifting the
+ * text beside it as the frames swap between narrow and wide characters.
+ */
+.ascii-spinner {
+  display: inline-block;
+  width: 1ch;
+  font-family: var(--mono);
+  font-weight: 600;
+  text-align: center;
+  color: var(--accent);
+  flex: none;
+}
+
+.brand-spinner {
+  margin-left: 6px;
+  opacity: 0.9;
+}
+
+/* A conversation still working while you read another one. */
+.session-live {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+  animation: session-live-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes session-live-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-live {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Per-turn stats under an assistant reply */
+
+.turn-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+.turn-stats .sep {
+  opacity: 0.4;
+}
+
+.thinking-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-2);
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout hardening                                                    */
+/*                                                                     */
+/* Every bar in the app is a flex row that can be handed more content  */
+/* than the window is wide вЂ” a long branch name, a deep file path, a   */
+/* model id, another conversation reporting in. Left alone, flex lets  */
+/* those overrun their neighbours. The rules below make each bar give  */
+/* way in a defined order instead of overlapping.                      */
+/* ------------------------------------------------------------------ */
+
+/* Title bar: the brand and the mode switch hold their size, the
+   workspace button is the one that gives. */
+.titlebar {
+  min-width: 0;
+  overflow: hidden;
+}
+.brand,
+.titlebar-modes {
+  flex: none;
+}
+.workspace-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.workspace-btn > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status bar: everything is a fixed-size chip except the open file path,
+   which truncates, and the spacer, which absorbs what is left. */
+/*
+ * Not clipped: the profile menu opens upward out of this bar, and
+ * `overflow: hidden` here would cut it in half. Overflow is prevented instead
+ * by letting every chip shrink and truncate, so there is never anything to
+ * clip in the first place.
+ */
+.statusbar {
+  min-width: 0;
+  overflow: visible;
+  gap: 12px;
+}
+.statusbar > * {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The two ends anchor the bar, and the profile wrapper is the popover's
+   positioning context вЂ” none of them may move or be clipped. */
+.statusbar > .status-profile-wrap,
+.statusbar > .status-settings,
+.statusbar > .status-version {
+  flex: none;
+  overflow: visible;
+}
+.statusbar .sep {
+  flex: 1 1 auto;
+  min-width: 8px;
+}
+.statusbar .status-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statusbar .live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.status-profile > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Composer controls wrap onto a second line rather than pushing the send
+   button off the edge on a narrow window. */
+.composer-row {
+  flex-wrap: wrap;
+  row-gap: 6px;
+  min-width: 0;
+}
+.composer,
+.composer-box {
+  min-width: 0;
+}
+
+/* Popovers stay inside the window even with a long submenu. */
+.menu {
+  max-width: min(340px, calc(100vw - 24px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.menu-sub {
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+/* Panes: a flex child defaults to min-width:auto, which refuses to shrink
+   below its content and is what pushes editor and chat into each other. */
+.body,
+.pane,
+.main-area,
+.chat-scroll,
+.tree {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Long unbroken strings вЂ” paths, urls, tokens вЂ” wrap instead of forcing a
+   horizontal scrollbar on the whole conversation. */
+.chat-scroll {
+  overflow-wrap: anywhere;
+}
+.chat-scroll pre,
+.code-box {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Account pane                                                        */
+/* ------------------------------------------------------------------ */
+
+/* `.hint` was only ever styled inside a field; the account pane also uses it
+   for standalone explanatory text. */
+.settings-scroll .hint {
+  font-size: 11.5px;
+  color: var(--fg-3);
+  line-height: 1.55;
+}
+
+.settings-subhead {
+  margin: 20px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+/* An input and its action button on one line, the button sized to its label. */
+.row-inline {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+}
+.row-inline > .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.row-inline > .btn {
+  flex: none;
+}
+
+.field-error {
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--red);
+}
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+  min-width: 0;
+}
+
+.account-avatar {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-3);
+}
+.account-avatar.placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.account-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.account-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-meta {
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  color: var(--fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn.ghost {
+  flex: none;
+  background: none;
+  border-color: var(--border-strong);
+  color: var(--fg-2);
+}
+.btn.ghost:hover {
+  color: var(--fg-0);
+  border-color: var(--fg-3);
+}
+
+/* Inline text button that reads as a link without being one. */
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link:hover {
+  color: var(--fg-0);
+}
+
+/* The avatar slot takes either an image or an initial. */
+img.status-avatar,
+img.menu-avatar {
+  object-fit: cover;
+  background: var(--bg-3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat rail                                                           */
+/* ------------------------------------------------------------------ */
+
+.chat-nav {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 8px 0;
+  gap: 10px;
+}
+
+.chat-nav-modes {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.chat-nav-modes > button {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 12px;
+  color: var(--fg-2);
+  transition:
+    background 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.chat-nav-modes > button:hover {
+  color: var(--fg-0);
+}
+.chat-nav-modes > button.active {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* The one action that starts work, so it gets the accent and the weight. */
+.chat-nav-new {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--fg-0);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition:
+    background 120ms var(--ease),
+    border-color 120ms var(--ease);
+}
+.chat-nav-new:hover {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+}
+.chat-nav-plus {
+  color: var(--accent);
+  font-size: 14px;
+  line-height: 1;
+}
+.chat-nav-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.chat-nav-links {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chat-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 9px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--fg-2);
+  text-align: left;
+  transition:
+    background 110ms var(--ease),
+    color 110ms var(--ease);
+}
+.chat-nav-row:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.chat-nav-row.active {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+.chat-nav-icon {
+  flex: none;
+  width: 15px;
+  text-align: center;
+  opacity: 0.75;
+}
+.chat-nav-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-nav-count {
+  flex: none;
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--yellow);
+  color: var(--bg-0);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 16px;
+}
+
+/* The history takes the remaining height and is the only part that scrolls. */
+.chat-nav-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 -8px;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dashboard                                                           */
+/* ------------------------------------------------------------------ */
+
+.dashboard {
+  padding: 28px 0 40px;
+}
+
+.dashboard-head h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.dashboard-path {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--fg-3);
+  overflow-wrap: anywhere;
+}
+
+.dashboard-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 14px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  text-align: left;
+  transition:
+    border-color 130ms var(--ease),
+    background 130ms var(--ease);
+}
+.dash-card.clickable:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-2);
+}
+.dash-card.tone-warn {
+  border-color: color-mix(in oklab, var(--yellow) 40%, transparent);
+}
+.dash-card.tone-bad {
+  border-color: color-mix(in oklab, var(--red) 45%, transparent);
+}
+
+.dash-card-label {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.dash-card-value {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-card-hint {
+  font-size: 11.5px;
+  color: var(--fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+}
+
+.dashboard-subhead {
+  margin: 28px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.dashboard-recent {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.dash-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 13px;
+  min-width: 0;
+  text-align: left;
+  background: var(--bg-1);
+  transition: background 110ms var(--ease);
+}
+.dash-row + .dash-row {
+  border-top: 1px solid var(--border);
+}
+.dash-row:hover {
+  background: var(--bg-2);
+}
+.dash-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--fg-1);
+}
+.dash-row-meta {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.status-profile-wrap {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------ */
